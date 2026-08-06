@@ -6,7 +6,7 @@ import { BadgeTone } from "@/components/badge/enums";
 import { Button } from "@/components/button";
 import { ButtonSize, ButtonVariant } from "@/components/button/enums";
 import { Panel } from "@/components/panel";
-import { AUDIO_DEVICE_FIXTURES } from "@/lib/constants/audio-device-fixtures";
+import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
 import { CAMERA_FIXTURES } from "@/lib/constants/camera-fixtures";
 import { ProfileOrigin } from "@/lib/enums/profile-origin";
 
@@ -16,17 +16,18 @@ export function ProfileCard({
   onEdit,
   profile,
 }: ProfileCardProps): React.ReactNode {
+  const { devices: audioDevices } = useAudioDevices();
   const presetMessages = profile.preset
     ? messages.presets[profile.preset]
     : null;
   const name = presetMessages?.name ?? profile.name;
   const description = presetMessages?.description ?? profile.description;
   const inputName =
-    AUDIO_DEVICE_FIXTURES.find(
+    audioDevices.find(
       (device) => device.id === profile.preferences.audioInputId,
     )?.name ?? profile.preferences.audioInputId;
   const outputName =
-    AUDIO_DEVICE_FIXTURES.find(
+    audioDevices.find(
       (device) => device.id === profile.preferences.audioOutputId,
     )?.name ?? profile.preferences.audioOutputId;
   const cameraName =

@@ -21,6 +21,7 @@ pub(crate) struct DeviceEvent {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum DeviceEventCategory {
+    Audio,
     AudioInput,
     AudioOutput,
     Camera,
@@ -32,6 +33,7 @@ enum DeviceEventCategory {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 enum DeviceEventChange {
+    Changed,
     Connected,
     Disconnected,
 }
@@ -56,7 +58,7 @@ pub(crate) async fn emit_development_device_event<R: Runtime>(
     Ok(event)
 }
 
-fn parse_device_event(line: &[u8]) -> Result<DeviceEvent, NativeAgentError> {
+pub(crate) fn parse_device_event(line: &[u8]) -> Result<DeviceEvent, NativeAgentError> {
     let envelope: DeviceEventEnvelope =
         serde_json::from_slice(line).map_err(|_| NativeAgentError::protocol())?;
 
@@ -69,6 +71,13 @@ fn parse_device_event(line: &[u8]) -> Result<DeviceEvent, NativeAgentError> {
     }
 
     Ok(envelope.event)
+}
+
+impl DeviceEvent {
+    pub(crate) fn is_audio_change(&self) -> bool {
+        matches!(self.category, DeviceEventCategory::Audio)
+            && matches!(self.change, DeviceEventChange::Changed)
+    }
 }
 
 fn is_valid_identifier(identifier: &str) -> bool {

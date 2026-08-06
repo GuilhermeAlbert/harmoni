@@ -3,10 +3,6 @@ import { Headphones, Mic2, Volume2, VolumeX } from "lucide-react";
 import type { AudioDeviceCardProps } from "./types";
 import { Badge } from "@/components/badge";
 import { BadgeTone } from "@/components/badge/enums";
-import { Button } from "@/components/button";
-import { ButtonSize, ButtonVariant } from "@/components/button/enums";
-import { Slider } from "@/components/slider";
-import { AudioDeviceStatus } from "@/lib/enums/audio-device-status";
 import { AudioDirection } from "@/lib/enums/audio-direction";
 import { AudioTransport } from "@/lib/enums/audio-transport";
 
@@ -15,43 +11,27 @@ const TRANSPORT_MESSAGE_KEYS: Record<
   keyof AudioDeviceCardProps["messages"]["transports"]
 > = {
   [AudioTransport.BuiltIn]: "builtIn",
+  [AudioTransport.Airplay]: "airplay",
   [AudioTransport.Bluetooth]: "bluetooth",
   [AudioTransport.Hdmi]: "hdmi",
   [AudioTransport.Usb]: "usb",
-  [AudioTransport.UsbC]: "usbC",
+  [AudioTransport.Unknown]: "unknown",
+  [AudioTransport.Virtual]: "virtual",
 };
 
 export function AudioDeviceCard({
   device,
   messages,
-  onMakeDefault,
-  onToggleMute,
-  onVolumeChange,
 }: AudioDeviceCardProps): React.ReactNode {
-  const available = device.status === AudioDeviceStatus.Available;
-  const statusLabel =
-    device.status === AudioDeviceStatus.Unsupported
-      ? messages.unsupported
-      : device.status === AudioDeviceStatus.Unavailable
-        ? messages.unavailable
-        : device.default
-          ? messages.active
-          : messages.available;
-  const statusTone =
-    device.status === AudioDeviceStatus.Unsupported
-      ? BadgeTone.Warning
-      : device.status === AudioDeviceStatus.Unavailable
-        ? BadgeTone.Danger
-        : device.default
-          ? BadgeTone.Success
-          : BadgeTone.Neutral;
+  const statusLabel = device.isDefault ? messages.active : messages.available;
+  const statusTone = device.isDefault ? BadgeTone.Success : BadgeTone.Neutral;
   const directionLabel =
     device.direction === AudioDirection.Input
       ? messages.defaultInput
       : messages.defaultOutput;
   const DeviceIcon =
     device.direction === AudioDirection.Input ? Mic2 : Headphones;
-  const MuteIcon = device.muted ? Volume2 : VolumeX;
+  const MuteIcon = device.muted === true ? VolumeX : Volume2;
 
   return (
     <li className="p-4 sm:p-5">
@@ -65,7 +45,7 @@ export function AudioDeviceCard({
               <h3 className="truncate text-sm font-semibold">{device.name}</h3>
               <p className="mt-1 text-xs text-zinc-500">
                 {messages.transports[TRANSPORT_MESSAGE_KEYS[device.transport]]}
-                {device.default ? ` · ${directionLabel}` : ""}
+                {device.isDefault ? ` · ${directionLabel}` : ""}
               </p>
             </div>
           </div>
@@ -74,46 +54,30 @@ export function AudioDeviceCard({
           </Badge>
         </div>
 
-        <div className="mt-6">
-          <Slider
-            disabled={!available}
-            label={messages.volume}
-            max={100}
-            min={0}
-            name={`${device.id}-volume`}
-            onChange={(event) =>
-              onVolumeChange(device.id, Number(event.target.value))
-            }
-            step={1}
-            value={device.volume}
-            valueText={`${device.volume}%`}
-          />
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Button
-            disabled={!available}
-            onClick={() => onToggleMute(device.id)}
-            size={ButtonSize.Small}
-            variant={device.muted ? ButtonVariant.Primary : ButtonVariant.Secondary}
-          >
-            <MuteIcon aria-hidden="true" className="size-4" />
-            {device.muted ? messages.unmute : messages.mute}
-          </Button>
-          <Button
-            disabled={!available || device.default}
-            onClick={() => onMakeDefault(device.id)}
-            size={ButtonSize.Small}
-            variant={ButtonVariant.Ghost}
-          >
-            {device.default ? directionLabel : messages.makeDefault}
-          </Button>
-          {device.muted ? (
-            <span className="inline-flex min-h-9 items-center text-xs font-medium text-zinc-500">
-              {messages.muted}
-            </span>
-          ) : null}
-        </div>
+        <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+          <div className="rounded-xl border border-zinc-200 p-3 dark:border-white/[0.08]">
+            <dt className="text-xs text-zinc-500">{messages.volume}</dt>
+            <dd className="mt-1 font-[family-name:var(--font-commit-mono)] font-medium">
+              {device.canReadVolume && device.volume !== null
+                ? `${device.volume}%`
+                : messages.unavailableReading}
+            </dd>
+          </div>
+          <div className="rounded-xl border border-zinc-200 p-3 dark:border-white/[0.08]">
+            <dt className="flex items-center gap-1.5 text-xs text-zinc-500">
+              <MuteIcon aria-hidden="true" className="size-3.5" />
+              {messages.muteStatus}
+            </dt>
+            <dd className="mt-1 font-medium">
+              {device.canReadMute && device.muted !== null
+                ? device.muted
+                  ? messages.muted
+                  : messages.unmuted
+                : messages.unavailableReading}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs text-zinc-500">{messages.readOnly}</p>
       </article>
     </li>
   );

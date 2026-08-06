@@ -5,8 +5,11 @@ use std::{
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
-use tauri::{AppHandle, Runtime};
-use tauri_plugin_shell::{process::CommandEvent, ShellExt};
+use tauri::{async_runtime::Receiver, AppHandle, Runtime};
+use tauri_plugin_shell::{
+    process::{CommandChild, CommandEvent},
+    ShellExt,
+};
 use tokio::time::timeout;
 
 const AGENT_INFO_METHOD: &str = "agent.info";
@@ -96,20 +99,7 @@ pub(crate) async fn request_agent_output<R: Runtime>(
     request_prefix: &str,
     params: Value,
 ) -> Result<AgentOutput, NativeAgentError> {
-    let request_id = make_request_id(request_prefix)?;
-    let request = encode_request(&request_id, method, params)?;
-    let command = app
-        .shell()
-        .sidecar(AGENT_SIDECAR)
-        .map_err(|_| NativeAgentError::unavailable())?;
-    let (mut events, mut child) = command
-        .spawn()
-        .map_err(|_| NativeAgentError::unavailable())?;
-
-    if child.write(request.as_bytes()).is_err() || child.write(b"\n").is_err() {
-        let _ = child.kill();
-        return Err(NativeAgentError::process());
-    }
+    let (request_id, mut events, child) = spawn_agent_request(app, method, request_prefix, params)?;
 
     let response = timeout(AGENT_TIMEOUT, async {
         loop {
@@ -129,6 +119,30 @@ pub(crate) async fn request_agent_output<R: Runtime>(
 
     let line = response.map_err(|_| NativeAgentError::timeout())??;
     Ok(AgentOutput { request_id, line })
+}
+
+pub(crate) fn spawn_agent_request<R: Runtime>(
+    app: &AppHandle<R>,
+    method: &str,
+    request_prefix: &str,
+    params: Value,
+) -> Result<(String, Receiver<CommandEvent>, CommandChild), NativeAgentError> {
+    let request_id = make_request_id(request_prefix)?;
+    let request = encode_request(&request_id, method, params)?;
+    let command = app
+        .shell()
+        .sidecar(AGENT_SIDECAR)
+        .map_err(|_| NativeAgentError::unavailable())?;
+    let (events, mut child) = command
+        .spawn()
+        .map_err(|_| NativeAgentError::unavailable())?;
+
+    if child.write(request.as_bytes()).is_err() || child.write(b"\n").is_err() {
+        let _ = child.kill();
+        return Err(NativeAgentError::process());
+    }
+
+    Ok((request_id, events, child))
 }
 
 fn make_request_id(prefix: &str) -> Result<String, NativeAgentError> {

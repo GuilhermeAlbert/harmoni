@@ -6,7 +6,7 @@ import type { ProfileFormProps } from "./types";
 import { Button } from "@/components/button";
 import { ButtonVariant } from "@/components/button/enums";
 import { Panel } from "@/components/panel";
-import { AUDIO_DEVICE_FIXTURES } from "@/lib/constants/audio-device-fixtures";
+import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
 import { CAMERA_FIXTURES } from "@/lib/constants/camera-fixtures";
 import { AudioDirection } from "@/lib/enums/audio-direction";
 import { CameraStatus } from "@/lib/enums/camera-status";
@@ -23,6 +23,7 @@ export function ProfileForm({
   const presetMessages = profile?.preset
     ? messages.presets[profile.preset]
     : null;
+  const { devices: audioDevices } = useAudioDevices();
   const schema = createProfileFormSchema(messages.form.validation);
   const {
     control,
@@ -45,10 +46,10 @@ export function ProfileForm({
     },
     resolver: zodResolver(schema),
   });
-  const audioInputs = AUDIO_DEVICE_FIXTURES.filter(
+  const audioInputs = audioDevices.filter(
     (device) => device.direction === AudioDirection.Input,
   );
-  const audioOutputs = AUDIO_DEVICE_FIXTURES.filter(
+  const audioOutputs = audioDevices.filter(
     (device) => device.direction === AudioDirection.Output,
   );
   const cameras = CAMERA_FIXTURES.filter(

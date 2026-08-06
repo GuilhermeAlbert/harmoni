@@ -1,14 +1,15 @@
-import type { AudioDeviceStatus } from "@/lib/enums/audio-device-status";
 import type { AudioDirection } from "@/lib/enums/audio-direction";
 import type { AudioTransport } from "@/lib/enums/audio-transport";
 
 export interface AudioDevice {
-  readonly default: boolean;
+  readonly canReadMute: boolean;
+  readonly canReadVolume: boolean;
   readonly direction: AudioDirection;
   readonly id: string;
-  readonly muted: boolean;
+  readonly isDefault: boolean;
+  readonly muted: boolean | null;
   readonly name: string;
-  readonly status: AudioDeviceStatus;
   readonly transport: AudioTransport;
-  readonly volume: number;
+  readonly uid: string;
+  readonly volume: number | null;
 }

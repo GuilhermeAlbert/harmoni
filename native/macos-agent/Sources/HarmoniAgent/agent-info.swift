@@ -50,6 +50,17 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         return .response(.result(id: request.id, value: .openSettings(result)))
     }
 
+    if request.method == "audio.devices" {
+        return .response(.result(
+            id: request.id,
+            value: .audioDevices(discoverAudioDevices())
+        ))
+    }
+
+    if request.method == "audio.watchDeviceEvents" {
+        watchAudioDeviceEvents()
+    }
+
     guard request.method == "agent.info" else {
         return .response(makeErrorResponse(
             id: request.id,

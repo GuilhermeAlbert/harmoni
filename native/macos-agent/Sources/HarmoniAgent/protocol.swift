@@ -28,12 +28,15 @@ struct ErrorPayload: Encodable {
 
 enum ResultPayload: Encodable {
     case agentInfo(AgentInfoResult)
+    case audioDevices(AudioDiscoveryResult)
     case permissionStatus(PermissionStatusResult)
     case openSettings(OpenSettingsResult)
 
     func encode(to encoder: Encoder) throws {
         switch self {
         case let .agentInfo(result):
+            try result.encode(to: encoder)
+        case let .audioDevices(result):
             try result.encode(to: encoder)
         case let .permissionStatus(result):
             try result.encode(to: encoder)

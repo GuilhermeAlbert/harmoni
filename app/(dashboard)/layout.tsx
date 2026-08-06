@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { DashboardLayout } from "@/components/layouts/dashboard";
+import { AudioDevicesProvider } from "@/contexts/audio-devices";
 import { NativeAgentProvider } from "@/contexts/native-agent";
 
 export default function Layout({
@@ -8,7 +9,9 @@ export default function Layout({
 }: PropsWithChildren): React.ReactNode {
   return (
     <NativeAgentProvider>
-      <DashboardLayout>{children}</DashboardLayout>
+      <AudioDevicesProvider>
+        <DashboardLayout>{children}</DashboardLayout>
+      </AudioDevicesProvider>
     </NativeAgentProvider>
   );
 }

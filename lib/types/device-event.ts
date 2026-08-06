@@ -1,9 +1,9 @@
-import type { DeviceCategory } from "@/lib/enums/device-category";
+import type { DeviceEventCategory } from "@/lib/enums/device-event-category";
 import type { DeviceEventChange } from "@/lib/enums/device-event-change";
 
 export interface DeviceEvent {
   id: string;
-  category: DeviceCategory;
+  category: DeviceEventCategory;
   change: DeviceEventChange;
   occurredAt: string;
 }

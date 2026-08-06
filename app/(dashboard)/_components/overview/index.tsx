@@ -22,8 +22,11 @@ import { ButtonSize, ButtonVariant } from "@/components/button/enums";
 import { EmptyState } from "@/components/empty-state";
 import { Panel } from "@/components/panel";
 import { Spinner } from "@/components/spinner";
+import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
 import { useLanguage } from "@/contexts/language/use-language";
 import { DEVICE_FIXTURES } from "@/lib/constants/device-fixtures";
+import { AudioDirection } from "@/lib/enums/audio-direction";
+import { AudioDiscoveryState } from "@/lib/enums/audio-discovery-state";
 import { DeviceCategory } from "@/lib/enums/device-category";
 import { DeviceConnectionStatus } from "@/lib/enums/device-connection-status";
 import { OverviewFixtureState } from "@/lib/enums/overview-fixture-state";
@@ -41,10 +44,17 @@ export function Overview(): React.ReactNode {
   const [fixtureState, setFixtureState] = useState(
     OverviewFixtureState.Success,
   );
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingFixtures, setRefreshingFixtures] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { messages } = useLanguage();
+  const {
+    devices: audioDevices,
+    refresh: refreshAudioDevices,
+    refreshing: refreshingAudio,
+    state: audioDiscoveryState,
+  } = useAudioDevices();
   const overviewMessages = messages.overview;
+  const refreshing = refreshingFixtures || refreshingAudio;
 
   useEffect(
     () => () => {
@@ -55,18 +65,18 @@ export function Overview(): React.ReactNode {
     [],
   );
 
-  const activeAudioInput = devices.find(
-    (device) =>
-      device.category === DeviceCategory.AudioInput &&
-      device.active &&
-      device.enabled,
-  );
-  const activeAudioOutput = devices.find(
-    (device) =>
-      device.category === DeviceCategory.AudioOutput &&
-      device.active &&
-      device.enabled,
-  );
+  const activeAudioInput =
+    audioDevices.find(
+      (device) =>
+        device.direction === AudioDirection.Input && device.isDefault,
+    ) ??
+    audioDevices.find((device) => device.direction === AudioDirection.Input);
+  const activeAudioOutput =
+    audioDevices.find(
+      (device) =>
+        device.direction === AudioDirection.Output && device.isDefault,
+    ) ??
+    audioDevices.find((device) => device.direction === AudioDirection.Output);
   const activeCamera = devices.find(
     (device) =>
       device.category === DeviceCategory.Camera &&
@@ -103,12 +113,13 @@ export function Overview(): React.ReactNode {
       clearTimeout(refreshTimerRef.current);
     }
 
-    setRefreshing(true);
+    setRefreshingFixtures(true);
+    refreshAudioDevices();
     setFeedback("");
     refreshTimerRef.current = setTimeout(() => {
       setDevices(copyDeviceFixtures());
       setFixtureState(OverviewFixtureState.Success);
-      setRefreshing(false);
+      setRefreshingFixtures(false);
       setFeedback(overviewMessages.feedback.refreshed);
       refreshTimerRef.current = null;
     }, REFRESH_FEEDBACK_DELAY_MS);
@@ -131,14 +142,7 @@ export function Overview(): React.ReactNode {
   };
 
   const handleMuteMicrophones = (): void => {
-    setDevices((currentDevices) =>
-      currentDevices.map((device) =>
-        device.category === DeviceCategory.AudioInput
-          ? { ...device, muted: true }
-          : device,
-      ),
-    );
-    setFeedback(overviewMessages.feedback.microphonesMuted);
+    setFeedback(overviewMessages.feedback.audioReadOnly);
   };
 
   const handleDisableCameras = (): void => {
@@ -155,11 +159,7 @@ export function Overview(): React.ReactNode {
   const handleSelectRecordingProfile = (): void => {
     setDevices((currentDevices) =>
       currentDevices.map((device) =>
-        [
-          DeviceCategory.AudioInput,
-          DeviceCategory.AudioOutput,
-          DeviceCategory.Camera,
-        ].includes(device.category)
+        device.category === DeviceCategory.Camera
           ? { ...device, active: true, enabled: true, muted: false }
           : device,
       ),
@@ -167,12 +167,32 @@ export function Overview(): React.ReactNode {
     setFeedback(overviewMessages.feedback.recordingApplied);
   };
 
-  const audioInputDescription = activeAudioInput
-    ? `${activeAudioInput.volumePercent}% ${overviewMessages.metrics.volume} · ${activeAudioInput.muted ? overviewMessages.metrics.muted : overviewMessages.metrics.unmuted}`
-    : overviewMessages.metrics.noActiveDevice;
-  const audioOutputDescription = activeAudioOutput
-    ? `${activeAudioOutput.volumePercent}% ${overviewMessages.metrics.volume} · ${activeAudioOutput.transport}`
-    : overviewMessages.metrics.noActiveDevice;
+  const describeAudioDevice = (
+    device: (typeof audioDevices)[number] | undefined,
+  ): string => {
+    if (audioDiscoveryState === AudioDiscoveryState.Error) {
+      return overviewMessages.metrics.audioUnavailable;
+    }
+
+    if (!device) {
+      return overviewMessages.metrics.noActiveDevice;
+    }
+
+    const volume =
+      device.volume === null
+        ? overviewMessages.metrics.unavailableReading
+        : `${device.volume}% ${overviewMessages.metrics.volume}`;
+    const mute =
+      device.muted === null
+        ? overviewMessages.metrics.unavailableReading
+        : device.muted
+          ? overviewMessages.metrics.muted
+          : overviewMessages.metrics.unmuted;
+
+    return `${volume} · ${mute}`;
+  };
+  const audioInputDescription = describeAudioDevice(activeAudioInput);
+  const audioOutputDescription = describeAudioDevice(activeAudioOutput);
   const cameraDescription = activeCamera
     ? `${activeCamera.cameraResolution} · ${activeCamera.cameraZoom?.toFixed(2)}× ${overviewMessages.metrics.zoom}`
     : overviewMessages.metrics.noActiveDevice;
@@ -282,8 +302,10 @@ export function Overview(): React.ReactNode {
                 icon={Mic2}
                 title={overviewMessages.metrics.audioInput}
                 value={
-                  activeAudioInput?.name ??
-                  overviewMessages.metrics.noActiveDevice
+                  audioDiscoveryState === AudioDiscoveryState.Loading
+                    ? overviewMessages.metrics.loading
+                    : (activeAudioInput?.name ??
+                      overviewMessages.metrics.noActiveDevice)
                 }
               />
               <MetricCard
@@ -291,8 +313,10 @@ export function Overview(): React.ReactNode {
                 icon={Headphones}
                 title={overviewMessages.metrics.audioOutput}
                 value={
-                  activeAudioOutput?.name ??
-                  overviewMessages.metrics.noActiveDevice
+                  audioDiscoveryState === AudioDiscoveryState.Loading
+                    ? overviewMessages.metrics.loading
+                    : (activeAudioOutput?.name ??
+                      overviewMessages.metrics.noActiveDevice)
                 }
               />
               <MetricCard

@@ -1,7 +1,9 @@
 export enum AudioTransport {
+  Airplay = "airplay",
   BuiltIn = "built-in",
   Bluetooth = "bluetooth",
   Hdmi = "hdmi",
   Usb = "usb",
-  UsbC = "usb-c",
+  Unknown = "unknown",
+  Virtual = "virtual",
 }
