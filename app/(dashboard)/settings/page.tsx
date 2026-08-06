@@ -1,7 +1,7 @@
-import { PagePlaceholder } from "../_components/page-placeholder";
-import { DashboardPath } from "@/lib/enums/dashboard-path";
+import packageMetadata from "@/package.json";
+
+import { SettingsScreen } from "./_components/settings-screen";
 
 export default function SettingsPage(): React.ReactNode {
-  return <PagePlaceholder path={DashboardPath.Settings} />;
+  return <SettingsScreen appVersion={packageMetadata.version} />;
 }
-
