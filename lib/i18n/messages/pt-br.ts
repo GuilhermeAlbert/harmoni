@@ -369,6 +369,25 @@ export const PT_BR_MESSAGES = {
     macOSVersion: "Versão do macOS",
     architecture: "Arquitetura",
     protocolVersion: "Versão do protocolo",
+    developmentEvent: {
+      label: "Evento de desenvolvimento",
+      trigger: "Emitir evento simulado",
+      triggering: "Emitindo evento simulado",
+      waiting: "Nenhum evento de desenvolvimento recebido.",
+      error: "Não foi possível receber o evento de desenvolvimento.",
+      categories: {
+        "audio-input": "Entrada de áudio",
+        "audio-output": "Saída de áudio",
+        camera: "Câmera",
+        keyboard: "Teclado",
+        mouse: "Mouse",
+        trackpad: "Trackpad",
+      },
+      changes: {
+        connected: "Conectado",
+        disconnected: "Desconectado",
+      },
+    },
   },
   settingsScreen: {
     fixtureLabel: "Permissões e controles do sistema usam dados simulados de fixture",

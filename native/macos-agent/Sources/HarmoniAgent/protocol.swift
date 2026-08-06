@@ -24,6 +24,33 @@ struct ErrorPayload: Encodable {
     let message: String
 }
 
+struct DeviceEventEnvelope: Encodable {
+    let kind: String
+    let version: Int
+    let event: DeviceEvent
+}
+
+struct DeviceEvent: Encodable {
+    let id: String
+    let category: String
+    let change: String
+    let occurredAt: String
+}
+
+enum AgentOutput: Encodable {
+    case response(ResponseEnvelope)
+    case deviceEvent(DeviceEventEnvelope)
+
+    func encode(to encoder: Encoder) throws {
+        switch self {
+        case let .response(response):
+            try response.encode(to: encoder)
+        case let .deviceEvent(event):
+            try event.encode(to: encoder)
+        }
+    }
+}
+
 enum ResponseEnvelope: Encodable {
     case result(id: String, value: AgentInfoResult)
     case error(id: String?, value: ErrorPayload)
@@ -61,4 +88,17 @@ func makeErrorResponse(
     message: String
 ) -> ResponseEnvelope {
     .error(id: id, value: ErrorPayload(code: code, message: message))
+}
+
+func makeDevelopmentDeviceEvent() -> DeviceEventEnvelope {
+    DeviceEventEnvelope(
+        kind: "device-change",
+        version: PROTOCOL_VERSION,
+        event: DeviceEvent(
+            id: "development.audio-input",
+            category: "audio-input",
+            change: "connected",
+            occurredAt: "2026-01-01T00:00:00Z"
+        )
+    )
 }

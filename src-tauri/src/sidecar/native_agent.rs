@@ -8,7 +8,7 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
 use tokio::time::timeout;
 
-const AGENT_METHOD: &str = "agent.info";
+const AGENT_INFO_METHOD: &str = "agent.info";
 const AGENT_SIDECAR: &str = "harmoni-agent";
 const AGENT_TIMEOUT: Duration = Duration::from_secs(3);
 const PROTOCOL_VERSION: u16 = 1;
@@ -44,7 +44,7 @@ enum NativeAgentErrorCode {
 struct AgentRequest<'a> {
     id: &'a str,
     version: u16,
-    method: &'static str,
+    method: &'a str,
     params: AgentInfoParameters,
 }
 
@@ -76,11 +76,29 @@ struct AgentProtocolError {
     message: String,
 }
 
+pub(crate) struct AgentOutput {
+    pub(crate) request_id: String,
+    pub(crate) line: Vec<u8>,
+}
+
 pub(crate) async fn fetch_agent_health<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<AgentHealth, NativeAgentError> {
-    let request_id = make_request_id()?;
-    let request = encode_request(&request_id)?;
+    let output = request_agent_output(app, AGENT_INFO_METHOD, "health").await?;
+    parse_response(
+        &output.line,
+        &output.request_id,
+        app.package_info().version.to_string(),
+    )
+}
+
+pub(crate) async fn request_agent_output<R: Runtime>(
+    app: &AppHandle<R>,
+    method: &str,
+    request_prefix: &str,
+) -> Result<AgentOutput, NativeAgentError> {
+    let request_id = make_request_id(request_prefix)?;
+    let request = encode_request(&request_id, method)?;
     let command = app
         .shell()
         .sidecar(AGENT_SIDECAR)
@@ -111,23 +129,23 @@ pub(crate) async fn fetch_agent_health<R: Runtime>(
     let _ = child.kill();
 
     let line = response.map_err(|_| NativeAgentError::timeout())??;
-    parse_response(&line, &request_id, app.package_info().version.to_string())
+    Ok(AgentOutput { request_id, line })
 }
 
-fn make_request_id() -> Result<String, NativeAgentError> {
+fn make_request_id(prefix: &str) -> Result<String, NativeAgentError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|_| NativeAgentError::process())?
         .as_nanos();
 
-    Ok(format!("health-{}-{timestamp}", process::id()))
+    Ok(format!("{prefix}-{}-{timestamp}", process::id()))
 }
 
-fn encode_request(request_id: &str) -> Result<String, NativeAgentError> {
+fn encode_request(request_id: &str, method: &str) -> Result<String, NativeAgentError> {
     serde_json::to_string(&AgentRequest {
         id: request_id,
         version: PROTOCOL_VERSION,
-        method: AGENT_METHOD,
+        method,
         params: AgentInfoParameters {},
     })
     .map_err(|_| NativeAgentError::protocol())
@@ -193,14 +211,14 @@ impl NativeAgentError {
         }
     }
 
-    fn protocol() -> Self {
+    pub(crate) fn protocol() -> Self {
         Self {
             code: NativeAgentErrorCode::Protocol,
             message: "The native agent returned an invalid response.",
         }
     }
 
-    fn process() -> Self {
+    pub(crate) fn process() -> Self {
         Self {
             code: NativeAgentErrorCode::Process,
             message: "The native agent process failed.",

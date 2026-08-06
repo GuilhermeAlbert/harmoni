@@ -5,22 +5,22 @@ let encoder = JSONEncoder()
 encoder.outputFormatting = [.sortedKeys]
 
 while let line = readLine(strippingNewline: true) {
-    let response: ResponseEnvelope
+    let output: AgentOutput
 
     do {
         let request = try decoder.decode(RequestEnvelope.self, from: Data(line.utf8))
-        response = handleRequest(request)
+        output = handleRequest(request)
     } catch {
         writeDiagnostic("Rejected malformed protocol request.")
-        response = makeErrorResponse(
+        output = .response(makeErrorResponse(
             id: nil,
             code: "invalid_request",
             message: "Malformed request envelope."
-        )
+        ))
     }
 
     do {
-        let data = try encoder.encode(response)
+        let data = try encoder.encode(output)
         FileHandle.standardOutput.write(data)
         FileHandle.standardOutput.write(Data([0x0A]))
     } catch {

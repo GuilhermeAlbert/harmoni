@@ -10,6 +10,9 @@ import { EN_MESSAGES } from "@/lib/i18n/messages/en";
 export const metadata: Metadata = {
   title: EN_MESSAGES.metadata.title,
   description: EN_MESSAGES.metadata.description,
+  icons: {
+    icon: "/images/maestro.png",
+  },
 };
 
 export default function RootLayout({

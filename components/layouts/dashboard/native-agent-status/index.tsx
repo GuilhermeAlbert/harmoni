@@ -1,5 +1,6 @@
 import { MonitorCog } from "lucide-react";
 
+import { DeviceEventIndicator } from "./device-event-indicator";
 import { Badge } from "@/components/badge";
 import { BadgeTone } from "@/components/badge/enums";
 import { Button } from "@/components/button";
@@ -42,11 +43,14 @@ export function NativeAgentStatus(): React.ReactNode {
       ) : null}
 
       {state === NativeAgentState.Ready && health ? (
-        <p className="mt-2 text-xs leading-5 text-zinc-500">
-          {nativeMessages.agentVersionShort} {health.agentVersion}
-          <span aria-hidden="true"> · </span>
-          {health.architecture}
-        </p>
+        <>
+          <p className="mt-2 text-xs leading-5 text-zinc-500">
+            {nativeMessages.agentVersionShort} {health.agentVersion}
+            <span aria-hidden="true"> · </span>
+            {health.architecture}
+          </p>
+          <DeviceEventIndicator />
+        </>
       ) : null}
 
       {state === NativeAgentState.Unavailable ||
