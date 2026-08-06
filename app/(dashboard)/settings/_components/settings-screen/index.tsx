@@ -4,16 +4,21 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { MonitorCog, Power } from "lucide-react";
 
-import type { SettingsScreenProps } from "./types";
 import { PermissionSummary } from "../permission-summary";
 import { Badge } from "@/components/badge";
 import { BadgeTone } from "@/components/badge/enums";
+import { Button } from "@/components/button";
+import { ButtonSize, ButtonVariant } from "@/components/button/enums";
 import { LanguageSelector } from "@/components/language-selector";
 import { Panel } from "@/components/panel";
+import { Spinner } from "@/components/spinner";
+import { SpinnerSize } from "@/components/spinner/enums";
 import { Switch } from "@/components/switch";
 import { ThemeSelector } from "@/components/theme-selector";
 import { useLanguage } from "@/contexts/language/use-language";
+import { useNativeAgent } from "@/contexts/native-agent/use-native-agent";
 import { PERMISSION_FIXTURES } from "@/lib/constants/permission-fixtures";
+import { NativeAgentState } from "@/lib/enums/native-agent-state";
 import { SettingsFixtureState } from "@/lib/enums/settings-fixture-state";
 
 const SETTINGS_FIXTURE_STATES = [
@@ -27,15 +32,15 @@ function isSettingsFixtureState(value: string): value is SettingsFixtureState {
   return SETTINGS_FIXTURE_STATES.some((state) => state === value);
 }
 
-export function SettingsScreen({
-  appVersion,
-}: SettingsScreenProps): React.ReactNode {
+export function SettingsScreen(): React.ReactNode {
   const [feedback, setFeedback] = useState("");
   const [launchAtLogin, setLaunchAtLogin] = useState(false);
   const [permissionState, setPermissionState] = useState(
     SettingsFixtureState.Success,
   );
   const { messages } = useLanguage();
+  const { health, retry, state } = useNativeAgent();
+  const nativeMessages = messages.nativeAgent;
   const settingsMessages = messages.settingsScreen;
 
   const handleLaunchAtLoginChange = (enabled: boolean): void => {
@@ -155,31 +160,102 @@ export function SettingsScreen({
 
           <Panel className="overflow-hidden">
             <header className="border-b border-zinc-200 px-5 py-4 dark:border-white/[0.08]">
-              <h2 className="text-sm font-semibold">
-                {settingsMessages.appInfoTitle}
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold">
+                  {settingsMessages.appInfoTitle}
+                </h2>
+                {state === NativeAgentState.Ready ? (
+                  <Badge tone={BadgeTone.Success}>{nativeMessages.ready}</Badge>
+                ) : null}
+              </div>
               <p className="mt-1 text-xs text-zinc-500">
                 {settingsMessages.appInfoDescription}
               </p>
             </header>
-            <div className="flex items-start gap-3 p-5">
+            <div
+              aria-atomic="true"
+              aria-live="polite"
+              className="flex items-start gap-3 p-5"
+            >
               <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-zinc-400">
                 <MonitorCog aria-hidden="true" className="size-4" />
               </span>
-              <dl className="grid flex-1 gap-3 text-sm sm:grid-cols-3">
-                <div>
-                  <dt className="text-xs text-zinc-500">{settingsMessages.version}</dt>
-                  <dd className="mt-1 font-[family-name:var(--font-commit-mono)] font-medium">{appVersion}</dd>
+              {state === NativeAgentState.Loading ? (
+                <div className="flex min-h-10 items-center gap-2 text-sm text-zinc-500">
+                  <Spinner
+                    label={nativeMessages.loading}
+                    size={SpinnerSize.Small}
+                  />
+                  <span>{nativeMessages.loading}</span>
                 </div>
-                <div>
-                  <dt className="text-xs text-zinc-500">{settingsMessages.platform}</dt>
-                  <dd className="mt-1 font-medium">{settingsMessages.platformValue}</dd>
+              ) : null}
+
+              {state === NativeAgentState.Ready && health ? (
+                <dl className="grid flex-1 gap-4 text-sm sm:grid-cols-2 xl:grid-cols-5">
+                  <div>
+                    <dt className="text-xs text-zinc-500">
+                      {nativeMessages.appVersion}
+                    </dt>
+                    <dd className="mt-1 font-[family-name:var(--font-commit-mono)] font-medium">
+                      {health.appVersion}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-zinc-500">
+                      {nativeMessages.agentVersion}
+                    </dt>
+                    <dd className="mt-1 font-[family-name:var(--font-commit-mono)] font-medium">
+                      {health.agentVersion}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-zinc-500">
+                      {nativeMessages.macOSVersion}
+                    </dt>
+                    <dd className="mt-1 font-medium">{health.macOSVersion}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-zinc-500">
+                      {nativeMessages.architecture}
+                    </dt>
+                    <dd className="mt-1 font-[family-name:var(--font-commit-mono)] font-medium">
+                      {health.architecture}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-zinc-500">
+                      {nativeMessages.protocolVersion}
+                    </dt>
+                    <dd className="mt-1 font-[family-name:var(--font-commit-mono)] font-medium">
+                      {health.protocolVersion}
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
+
+              {state === NativeAgentState.Unavailable ||
+              state === NativeAgentState.Error ? (
+                <div className="flex-1">
+                  <Badge tone={BadgeTone.Danger}>
+                    {state === NativeAgentState.Unavailable
+                      ? nativeMessages.unavailable
+                      : nativeMessages.error}
+                  </Badge>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                    {state === NativeAgentState.Unavailable
+                      ? nativeMessages.unavailableDescription
+                      : nativeMessages.errorDescription}
+                  </p>
+                  <Button
+                    className="mt-3"
+                    onClick={retry}
+                    size={ButtonSize.Small}
+                    variant={ButtonVariant.Secondary}
+                  >
+                    {nativeMessages.retry}
+                  </Button>
                 </div>
-                <div>
-                  <dt className="text-xs text-zinc-500">{settingsMessages.runtime}</dt>
-                  <dd className="mt-1 font-medium">{settingsMessages.runtimeValue}</dd>
-                </div>
-              </dl>
+              ) : null}
             </div>
           </Panel>
         </div>

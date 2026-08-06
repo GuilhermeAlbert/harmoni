@@ -5,6 +5,7 @@ import { Brand } from "@/components/brand";
 import { IconButton } from "@/components/icon-button";
 import { LanguageSelector } from "@/components/language-selector";
 import { DashboardNavigation } from "@/components/layouts/dashboard/navigation";
+import { NativeAgentStatus } from "@/components/layouts/dashboard/native-agent-status";
 import { ThemeSelector } from "@/components/theme-selector";
 
 export function DashboardSidebar({
@@ -41,10 +42,10 @@ export function DashboardSidebar({
       </div>
 
       <div className="mt-auto grid gap-5 border-t border-zinc-200 p-4 dark:border-white/[0.07]">
+        <NativeAgentStatus />
         <LanguageSelector />
         <ThemeSelector />
       </div>
     </aside>
   );
 }
-

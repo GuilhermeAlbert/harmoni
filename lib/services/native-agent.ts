@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { NativeAgentErrorCode } from "@/lib/enums/native-agent-error-code";
 import type {
@@ -9,6 +9,13 @@ import type {
 const GET_AGENT_HEALTH_COMMAND = "get_agent_health";
 
 export async function getAgentHealth(): Promise<AgentHealth> {
+  if (!isTauri()) {
+    throw createNativeAgentError({
+      code: NativeAgentErrorCode.Unavailable,
+      message: "The native agent is unavailable.",
+    });
+  }
+
   try {
     return await invoke<AgentHealth>(GET_AGENT_HEALTH_COMMAND);
   } catch (cause: unknown) {
