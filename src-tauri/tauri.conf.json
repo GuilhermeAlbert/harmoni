@@ -4,7 +4,7 @@
   "identifier": "com.harmoni.desktop",
   "build": {
     "beforeDevCommand": "yarn build",
-    "beforeBuildCommand": "yarn build",
+    "beforeBuildCommand": "yarn build && yarn native:build",
     "frontendDist": "../out"
   },
   "app": {

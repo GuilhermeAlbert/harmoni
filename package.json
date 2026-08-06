@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
+    "native:build": "swift build --package-path native/macos-agent",
     "tauri": "tauri"
   },
   "engines": {
