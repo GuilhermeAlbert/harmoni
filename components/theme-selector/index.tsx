@@ -2,26 +2,29 @@
 
 import { Monitor, Moon, Sun } from "lucide-react";
 
+import { useLanguage } from "@/contexts/language/use-language";
 import { useTheme } from "@/contexts/theme/use-theme";
 import { Theme } from "@/lib/enums/theme";
 
 const THEME_OPTIONS = [
-  { icon: Sun, label: "Light", value: Theme.Light },
-  { icon: Moon, label: "Dark", value: Theme.Dark },
-  { icon: Monitor, label: "System", value: Theme.System },
+  { icon: Sun, messageKey: "light", value: Theme.Light },
+  { icon: Moon, messageKey: "dark", value: Theme.Dark },
+  { icon: Monitor, messageKey: "system", value: Theme.System },
 ] as const;
 
 export function ThemeSelector(): React.ReactNode {
+  const { messages } = useLanguage();
   const { setTheme, theme } = useTheme();
 
   return (
     <fieldset>
       <legend className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-        Appearance
+        {messages.theme.label}
       </legend>
       <div className="inline-flex rounded-xl border border-zinc-300 bg-zinc-100 p-1 dark:border-white/10 dark:bg-black/20">
-        {THEME_OPTIONS.map(({ icon: Icon, label, value }) => {
+        {THEME_OPTIONS.map(({ icon: Icon, messageKey, value }) => {
           const selected = theme === value;
+          const label = messages.theme[messageKey];
 
           return (
             <button
@@ -40,4 +43,3 @@ export function ThemeSelector(): React.ReactNode {
     </fieldset>
   );
 }
-

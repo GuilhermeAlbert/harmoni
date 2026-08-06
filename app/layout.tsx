@@ -3,11 +3,13 @@ import type { PropsWithChildren } from "react";
 
 import { commitMono, geist, inter } from "./fonts";
 import "./globals.css";
+import { LanguageProvider } from "@/contexts/language";
 import { ThemeProvider } from "@/contexts/theme";
+import { EN_MESSAGES } from "@/lib/i18n/messages/en";
 
 export const metadata: Metadata = {
-  title: "Harmoni",
-  description: "Centralized device and peripheral management for macOS.",
+  title: EN_MESSAGES.metadata.title,
+  description: EN_MESSAGES.metadata.description,
 };
 
 export default function RootLayout({
@@ -20,7 +22,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="font-[family-name:var(--font-inter)]">
-        <ThemeProvider>{children}</ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -10,15 +10,18 @@ import { Button } from "@/components/button";
 import { ButtonVariant } from "@/components/button/enums";
 import { EmptyState } from "@/components/empty-state";
 import { IconButton } from "@/components/icon-button";
+import { LanguageSelector } from "@/components/language-selector";
 import { Panel } from "@/components/panel";
 import { Slider } from "@/components/slider";
 import { Spinner } from "@/components/spinner";
 import { Switch } from "@/components/switch";
 import { ThemeSelector } from "@/components/theme-selector";
+import { useLanguage } from "@/contexts/language/use-language";
 
 export function DesignSystemPreview(): React.ReactNode {
   const [enabled, setEnabled] = useState(true);
   const [volume, setVolume] = useState(72);
+  const { messages } = useLanguage();
 
   return (
     <main className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-950 transition-colors motion-reduce:transition-none dark:bg-[#090909] dark:text-zinc-100 sm:px-6 lg:px-8">
@@ -27,17 +30,19 @@ export function DesignSystemPreview(): React.ReactNode {
           <div>
             <Brand />
             <p className="mt-8 font-[family-name:var(--font-commit-mono)] text-[0.6875rem] uppercase tracking-[0.16em] text-zinc-500">
-              Design foundation
+              {messages.preview.eyebrow}
             </p>
             <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-geist)] text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
-              Precise controls for every device.
+              {messages.preview.title}
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-              A restrained, accessible foundation for Harmoni&apos;s device
-              management interface.
+              {messages.preview.description}
             </p>
           </div>
-          <ThemeSelector />
+          <div className="flex flex-wrap items-end gap-3">
+            <LanguageSelector />
+            <ThemeSelector />
+          </div>
         </header>
 
         <section
@@ -51,20 +56,22 @@ export function DesignSystemPreview(): React.ReactNode {
                   className="font-[family-name:var(--font-geist)] text-lg font-semibold"
                   id="controls-title"
                 >
-                  Controls
+                  {messages.preview.controlsTitle}
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  Complete interaction states at compact density.
+                  {messages.preview.controlsDescription}
                 </p>
               </div>
               <Badge tone={enabled ? BadgeTone.Success : BadgeTone.Neutral}>
-                {enabled ? "Enabled" : "Disabled"}
+                {enabled
+                  ? messages.preview.enabled
+                  : messages.preview.disabled}
               </Badge>
             </div>
 
             <div className="mt-7 grid gap-6">
               <Slider
-                label="Input volume"
+                label={messages.preview.inputVolume}
                 max={100}
                 min={0}
                 onChange={(event) => setVolume(Number(event.target.value))}
@@ -74,14 +81,14 @@ export function DesignSystemPreview(): React.ReactNode {
               <div className="flex items-center justify-between gap-4">
                 <span>
                   <span className="block text-sm font-medium">
-                    Device monitoring
+                    {messages.preview.monitoringTitle}
                   </span>
                   <span className="mt-1 block text-xs text-zinc-500">
-                    Receive connection and status changes.
+                    {messages.preview.monitoringDescription}
                   </span>
                 </span>
                 <Switch
-                  accessibleName="Device monitoring"
+                  accessibleName={messages.preview.monitoringTitle}
                   checked={enabled}
                   onCheckedChange={setEnabled}
                 />
@@ -89,11 +96,15 @@ export function DesignSystemPreview(): React.ReactNode {
             </div>
 
             <div className="mt-7 flex flex-wrap items-center gap-2">
-              <Button>Primary action</Button>
-              <Button variant={ButtonVariant.Secondary}>Secondary</Button>
-              <Button loading>Applying</Button>
+              <Button>{messages.preview.primaryAction}</Button>
+              <Button variant={ButtonVariant.Secondary}>
+                {messages.preview.secondaryAction}
+              </Button>
+              <Button loading loadingLabel={messages.preview.working}>
+                {messages.preview.applying}
+              </Button>
               <IconButton
-                accessibleName="Refresh devices"
+                accessibleName={messages.preview.refreshDevices}
                 icon={RefreshCw}
               />
             </div>
@@ -107,22 +118,24 @@ export function DesignSystemPreview(): React.ReactNode {
                 </span>
                 <div>
                   <h2 className="font-[family-name:var(--font-geist)] text-sm font-semibold">
-                    Device states
+                    {messages.preview.deviceStatesTitle}
                   </h2>
                   <p className="mt-1 text-xs text-zinc-500">
-                    Semantic feedback never relies on color alone.
+                    {messages.preview.deviceStatesDescription}
                   </p>
                 </div>
               </div>
-              <Spinner label="Discovering devices" />
+              <Spinner label={messages.preview.discoveringDevices} />
             </div>
             <EmptyState
               action={
-                <Button variant={ButtonVariant.Secondary}>Check again</Button>
+                <Button variant={ButtonVariant.Secondary}>
+                  {messages.preview.checkAgain}
+                </Button>
               }
-              description="Connected devices will appear here when discovery is available."
+              description={messages.preview.noDevicesDescription}
               icon={Inbox}
-              title="No devices yet"
+              title={messages.preview.noDevicesTitle}
             />
           </Panel>
         </section>
@@ -130,4 +143,3 @@ export function DesignSystemPreview(): React.ReactNode {
     </main>
   );
 }
-
