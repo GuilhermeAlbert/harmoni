@@ -14,6 +14,8 @@ struct RequestParameters: Codable {
     let deviceId: String?
     let volume: Int?
     let muted: Bool?
+    let cameraId: String?
+    let value: Double?
 }
 
 struct AgentInfoResult: Encodable {
@@ -34,6 +36,7 @@ enum ResultPayload: Encodable {
     case audioDevices(AudioDiscoveryResult)
     case audioMutation(AudioMutationResult)
     case cameras(CameraDiscoveryResult)
+    case cameraMutation(CameraMutationResult)
     case permissionStatus(PermissionStatusResult)
     case openSettings(OpenSettingsResult)
 
@@ -46,6 +49,8 @@ enum ResultPayload: Encodable {
         case let .audioMutation(result):
             try result.encode(to: encoder)
         case let .cameras(result):
+            try result.encode(to: encoder)
+        case let .cameraMutation(result):
             try result.encode(to: encoder)
         case let .permissionStatus(result):
             try result.encode(to: encoder)

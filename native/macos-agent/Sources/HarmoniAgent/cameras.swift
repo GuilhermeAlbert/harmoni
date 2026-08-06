@@ -30,8 +30,16 @@ struct CameraCapability: Encodable {
     let canControl: Bool
 }
 
+struct CameraMutationResult: Encodable {
+    let camera: DiscoveredCamera
+}
+
+struct CameraMutationFailure: Error {
+    let code: String
+    let message: String
+}
+
 func discoverCameras() -> CameraDiscoveryResult {
-    let preferredID = AVCaptureDevice.default(for: .video)?.uniqueID
     let discovery = AVCaptureDevice.DiscoverySession(
         deviceTypes: cameraDeviceTypes(),
         mediaType: .video,
@@ -42,7 +50,7 @@ func discoverCameras() -> CameraDiscoveryResult {
             id: device.uniqueID,
             name: device.localizedName,
             transport: cameraTransport(device),
-            preferred: device.uniqueID == preferredID,
+            preferred: false,
             formats: cameraFormats(device),
             zoom: nil,
             exposure: nil
@@ -56,6 +64,43 @@ func discoverCameras() -> CameraDiscoveryResult {
         authorization: cameraAuthorization(),
         cameras: cameras
     )
+}
+
+func setCameraZoom(
+    stableID: String,
+    value: Double
+) -> Result<CameraMutationResult, CameraMutationFailure> {
+    unsupportedCameraControl(stableID: stableID, value: value, control: "zoom")
+}
+
+func setCameraExposure(
+    stableID: String,
+    value: Double
+) -> Result<CameraMutationResult, CameraMutationFailure> {
+    unsupportedCameraControl(stableID: stableID, value: value, control: "exposure")
+}
+
+private func unsupportedCameraControl(
+    stableID: String,
+    value: Double,
+    control: String
+) -> Result<CameraMutationResult, CameraMutationFailure> {
+    guard value.isFinite else {
+        return .failure(CameraMutationFailure(
+            code: "invalid_argument",
+            message: "Camera control value must be finite."
+        ))
+    }
+    guard discoverCameras().cameras.contains(where: { $0.id == stableID }) else {
+        return .failure(CameraMutationFailure(
+            code: "not_found",
+            message: "The requested camera was not found."
+        ))
+    }
+    return .failure(CameraMutationFailure(
+        code: "unsupported",
+        message: "AVFoundation does not expose \(control) control for cameras on macOS."
+    ))
 }
 
 func watchCameraDeviceEvents() -> Never {

@@ -110,6 +110,18 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         watchCameraDeviceEvents()
     }
 
+    if request.method == "camera.setZoom" {
+        return cameraMutationOutput(request: request) {
+            setCameraZoom(stableID: $0, value: $1)
+        }
+    }
+
+    if request.method == "camera.setExposure" {
+        return cameraMutationOutput(request: request) {
+            setCameraExposure(stableID: $0, value: $1)
+        }
+    }
+
     guard request.method == "agent.info" else {
         return .response(makeErrorResponse(
             id: request.id,
@@ -128,6 +140,34 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
     )
 
     return .response(.result(id: request.id, value: .agentInfo(result)))
+}
+
+private func cameraMutationOutput(
+    request: RequestEnvelope,
+    mutation: (String, Double) -> Result<CameraMutationResult, CameraMutationFailure>
+) -> AgentOutput {
+    guard let cameraID = request.params.cameraId, !cameraID.isEmpty,
+          let value = request.params.value
+    else {
+        return .response(makeErrorResponse(
+            id: request.id,
+            code: "invalid_argument",
+            message: "Camera id and control value are required."
+        ))
+    }
+    switch mutation(cameraID, value) {
+    case let .success(result):
+        return .response(.result(
+            id: request.id,
+            value: .cameraMutation(result)
+        ))
+    case let .failure(error):
+        return .response(makeErrorResponse(
+            id: request.id,
+            code: error.code,
+            message: error.message
+        ))
+    }
 }
 
 private func audioMutationOutput(

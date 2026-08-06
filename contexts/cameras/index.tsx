@@ -5,16 +5,28 @@ import { useEffect, useState } from "react";
 
 import { CamerasContext } from "./context";
 import { CameraDiscoveryState } from "@/lib/enums/camera-discovery-state";
+import { CameraAction } from "@/lib/enums/camera-action";
+import { CameraMutationStatus } from "@/lib/enums/camera-mutation-status";
 import { DeviceEventCategory } from "@/lib/enums/device-event-category";
-import { getCameras } from "@/lib/services/cameras";
+import {
+  getCameras,
+  resetPreferredCamera,
+  setCameraExposure,
+  setCameraZoom,
+  setPreferredCamera,
+} from "@/lib/services/cameras";
 import { subscribeToDeviceEvents } from "@/lib/services/device-events";
 import type { CameraAuthorization } from "@/lib/enums/camera-authorization";
 import type { Camera } from "@/lib/types/camera";
+import type { CameraMutation, CameraPendingAction } from "./types";
 
 export function CamerasProvider({ children }: PropsWithChildren): React.ReactNode {
   const [attempt, setAttempt] = useState(0);
   const [authorization, setAuthorization] = useState<CameraAuthorization | null>(null);
   const [cameras, setCameras] = useState<readonly Camera[]>([]);
+  const [mutation, setMutation] = useState<CameraMutation | null>(null);
+  const [pending, setPending] = useState<CameraPendingAction | null>(null);
+  const [preferredCameraId, setPreferredCameraId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [state, setState] = useState(CameraDiscoveryState.Loading);
 
@@ -25,6 +37,7 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
         if (!active) return;
         setAuthorization(discovery.authorization);
         setCameras(discovery.cameras);
+        setPreferredCameraId(discovery.preferredCameraId);
         setRefreshing(false);
         setState(CameraDiscoveryState.Ready);
       })
@@ -66,8 +79,95 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
     setAttempt((current) => current + 1);
   };
 
+  const runMutation = async (
+    target: CameraPendingAction,
+    optimistic: readonly Camera[],
+    operation: () => Promise<void>,
+  ): Promise<void> => {
+    const previous = cameras;
+    setCameras(optimistic);
+    setMutation(null);
+    setPending(target);
+    try {
+      await operation();
+      setMutation({ ...target, status: CameraMutationStatus.Success });
+    } catch {
+      setCameras(previous);
+      setMutation({ ...target, status: CameraMutationStatus.Error });
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const setPreferred = async (camera: Camera): Promise<void> => {
+    await runMutation(
+      { action: CameraAction.Preference, cameraId: camera.id },
+      cameras.map((candidate) => ({ ...candidate, preferred: candidate.id === camera.id })),
+      async () => {
+        const preference = await setPreferredCamera(camera.id);
+        setPreferredCameraId(preference.preferredCameraId);
+      },
+    );
+  };
+
+  const resetPreferred = async (): Promise<void> => {
+    await runMutation(
+      { action: CameraAction.Preference, cameraId: preferredCameraId },
+      cameras.map((camera) => ({ ...camera, preferred: false })),
+      async () => {
+        const preference = await resetPreferredCamera();
+        setPreferredCameraId(preference.preferredCameraId);
+      },
+    );
+  };
+
+  const setControl = async (
+    camera: Camera,
+    value: number,
+    action: CameraAction.Zoom | CameraAction.Exposure,
+  ): Promise<void> => {
+    const capability = action === CameraAction.Zoom ? camera.zoom : camera.exposure;
+    if (!capability?.canControl || value < capability.min || value > capability.max) return;
+    await runMutation(
+      { action, cameraId: camera.id },
+      cameras.map((candidate) =>
+        candidate.id === camera.id
+          ? { ...candidate, [action]: { ...capability, value } }
+          : candidate,
+      ),
+      async () => {
+        const refreshed = action === CameraAction.Zoom
+          ? await setCameraZoom(camera.id, value)
+          : await setCameraExposure(camera.id, value);
+        setCameras((current) => current.map((candidate) =>
+          candidate.id === refreshed.id
+            ? { ...refreshed, preferred: refreshed.id === preferredCameraId }
+            : candidate,
+        ));
+      },
+    );
+  };
+
+  const setZoom = (camera: Camera, value: number): Promise<void> =>
+    setControl(camera, value, CameraAction.Zoom);
+  const setExposure = (camera: Camera, value: number): Promise<void> =>
+    setControl(camera, value, CameraAction.Exposure);
+
   return (
-    <CamerasContext.Provider value={{ authorization, cameras, refresh, refreshing, state }}>
+    <CamerasContext.Provider value={{
+      authorization,
+      cameras,
+      mutation,
+      pending,
+      preferredCameraId,
+      refresh,
+      refreshing,
+      resetPreferred,
+      setExposure,
+      setPreferred,
+      setZoom,
+      state,
+    }}>
       {children}
     </CamerasContext.Provider>
   );

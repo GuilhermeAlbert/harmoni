@@ -15,12 +15,38 @@ import { Spinner } from "@/components/spinner";
 import { useCameras } from "@/contexts/cameras/use-cameras";
 import { useLanguage } from "@/contexts/language/use-language";
 import { CameraDiscoveryState } from "@/lib/enums/camera-discovery-state";
+import { CameraMutationStatus } from "@/lib/enums/camera-mutation-status";
+import { CameraAction } from "@/lib/enums/camera-action";
 
 export function CameraScreen(): React.ReactNode {
-  const { authorization, cameras, refresh, refreshing, state } = useCameras();
+  const {
+    authorization,
+    cameras,
+    mutation,
+    pending,
+    preferredCameraId,
+    refresh,
+    refreshing,
+    resetPreferred,
+    setExposure,
+    setPreferred,
+    setZoom,
+    state,
+  } = useCameras();
   const { messages } = useLanguage();
   const cameraMessages = messages.cameras;
   const preferredCamera = cameras.find((camera) => camera.preferred) ?? cameras[0];
+  const disconnectedPreference =
+    preferredCameraId !== null && !cameras.some((camera) => camera.id === preferredCameraId);
+  const feedback = pending
+    ? cameraMessages.feedback.pending
+    : mutation?.status === CameraMutationStatus.Error
+      ? cameraMessages.feedback.failure
+      : mutation?.action === CameraAction.Preference
+        ? cameraMessages.feedback.preferenceSaved
+        : mutation
+          ? cameraMessages.feedback.controlApplied
+          : "";
 
   return (
     <main className="px-4 py-8 sm:px-6 lg:px-8">
@@ -43,19 +69,33 @@ export function CameraScreen(): React.ReactNode {
               </p>
             ) : null}
           </div>
-          <Button
-            disabled={refreshing || state === CameraDiscoveryState.Loading}
-            onClick={refresh}
-            variant={ButtonVariant.Secondary}
-          >
-            <RefreshCw aria-hidden="true" className={`size-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} />
-            {refreshing ? cameraMessages.refreshing : cameraMessages.refresh}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {preferredCameraId ? (
+              <Button disabled={pending !== null} onClick={() => void resetPreferred()} variant={ButtonVariant.Ghost}>
+                {cameraMessages.resetPreference}
+              </Button>
+            ) : null}
+            <Button
+              disabled={refreshing || state === CameraDiscoveryState.Loading}
+              onClick={refresh}
+              variant={ButtonVariant.Secondary}
+            >
+              <RefreshCw aria-hidden="true" className={`size-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} />
+              {refreshing ? cameraMessages.refreshing : cameraMessages.refresh}
+            </Button>
+          </div>
         </div>
 
         <p aria-live="polite" className="mt-5 min-h-5 text-sm font-medium text-zinc-700 dark:text-zinc-300" role="status">
-          {refreshing ? cameraMessages.refreshing : ""}
+          {refreshing ? cameraMessages.refreshing : feedback}
         </p>
+
+        {disconnectedPreference ? (
+          <Panel className="mt-4 p-4" role="status">
+            <p className="text-sm font-medium">{cameraMessages.preferredDisconnected}</p>
+            <p className="mt-1 text-xs text-zinc-500">{cameraMessages.preferredDisconnectedDescription}</p>
+          </Panel>
+        ) : null}
 
         {state === CameraDiscoveryState.Loading ? (
           <Panel className="mt-4 grid min-h-80 place-items-center p-8">
@@ -85,10 +125,21 @@ export function CameraScreen(): React.ReactNode {
 
         {state === CameraDiscoveryState.Ready && preferredCamera ? (
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-            <CameraList cameras={cameras} messages={cameraMessages} />
+            <CameraList
+              cameras={cameras}
+              messages={cameraMessages}
+              onSetPreferred={setPreferred}
+              pending={pending}
+            />
             <div className="grid content-start gap-4">
               <CameraPreview camera={preferredCamera} messages={cameraMessages} />
-              <CameraControls camera={preferredCamera} messages={cameraMessages} />
+              <CameraControls
+                camera={preferredCamera}
+                messages={cameraMessages}
+                onExposureChange={setExposure}
+                onZoomChange={setZoom}
+                pending={pending}
+              />
             </div>
           </div>
         ) : null}

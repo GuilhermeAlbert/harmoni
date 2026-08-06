@@ -27,4 +27,5 @@ export interface Camera {
 export interface CameraDiscovery {
   readonly authorization: CameraAuthorization;
   readonly cameras: readonly Camera[];
+  readonly preferredCameraId: string | null;
 }
