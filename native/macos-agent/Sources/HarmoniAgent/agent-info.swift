@@ -23,6 +23,33 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         return .deviceEvent(makeDevelopmentDeviceEvent())
     }
 
+    if request.method == "permissions.status" {
+        return .response(.result(
+            id: request.id,
+            value: .permissionStatus(readPermissionStatus())
+        ))
+    }
+
+    if request.method == "permissions.openSettings" {
+        guard let category = request.params.category else {
+            return .response(makeErrorResponse(
+                id: request.id,
+                code: "invalid_request",
+                message: "Permission category is required."
+            ))
+        }
+
+        guard let result = openPermissionSettings(category: category) else {
+            return .response(makeErrorResponse(
+                id: request.id,
+                code: "invalid_request",
+                message: "Unsupported permission category."
+            ))
+        }
+
+        return .response(.result(id: request.id, value: .openSettings(result)))
+    }
+
     guard request.method == "agent.info" else {
         return .response(makeErrorResponse(
             id: request.id,
@@ -40,7 +67,7 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         protocolVersion: PROTOCOL_VERSION
     )
 
-    return .response(.result(id: request.id, value: result))
+    return .response(.result(id: request.id, value: .agentInfo(result)))
 }
 
 private func currentArchitecture() -> String {

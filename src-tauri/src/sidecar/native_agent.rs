@@ -3,7 +3,8 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::{json, Value};
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
 use tokio::time::timeout;
@@ -45,17 +46,14 @@ struct AgentRequest<'a> {
     id: &'a str,
     version: u16,
     method: &'a str,
-    params: AgentInfoParameters,
+    params: Value,
 }
 
-#[derive(Serialize)]
-struct AgentInfoParameters {}
-
 #[derive(Deserialize)]
-struct AgentResponse {
+struct AgentResponse<Payload> {
     id: Option<String>,
     version: u16,
-    result: Option<AgentInfoResult>,
+    result: Option<Payload>,
     error: Option<AgentProtocolError>,
 }
 
@@ -84,7 +82,7 @@ pub(crate) struct AgentOutput {
 pub(crate) async fn fetch_agent_health<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<AgentHealth, NativeAgentError> {
-    let output = request_agent_output(app, AGENT_INFO_METHOD, "health").await?;
+    let output = request_agent_output(app, AGENT_INFO_METHOD, "health", json!({})).await?;
     parse_response(
         &output.line,
         &output.request_id,
@@ -96,9 +94,10 @@ pub(crate) async fn request_agent_output<R: Runtime>(
     app: &AppHandle<R>,
     method: &str,
     request_prefix: &str,
+    params: Value,
 ) -> Result<AgentOutput, NativeAgentError> {
     let request_id = make_request_id(request_prefix)?;
-    let request = encode_request(&request_id, method)?;
+    let request = encode_request(&request_id, method, params)?;
     let command = app
         .shell()
         .sidecar(AGENT_SIDECAR)
@@ -141,12 +140,16 @@ fn make_request_id(prefix: &str) -> Result<String, NativeAgentError> {
     Ok(format!("{prefix}-{}-{timestamp}", process::id()))
 }
 
-fn encode_request(request_id: &str, method: &str) -> Result<String, NativeAgentError> {
+fn encode_request(
+    request_id: &str,
+    method: &str,
+    params: Value,
+) -> Result<String, NativeAgentError> {
     serde_json::to_string(&AgentRequest {
         id: request_id,
         version: PROTOCOL_VERSION,
         method,
-        params: AgentInfoParameters {},
+        params,
     })
     .map_err(|_| NativeAgentError::protocol())
 }
@@ -156,7 +159,21 @@ fn parse_response(
     request_id: &str,
     app_version: String,
 ) -> Result<AgentHealth, NativeAgentError> {
-    let response: AgentResponse =
+    let result = parse_agent_result_line(line, request_id)?;
+    normalize_health(result, app_version)
+}
+
+pub(crate) fn parse_agent_result<Payload: DeserializeOwned>(
+    output: &AgentOutput,
+) -> Result<Payload, NativeAgentError> {
+    parse_agent_result_line(&output.line, &output.request_id)
+}
+
+fn parse_agent_result_line<Payload: DeserializeOwned>(
+    line: &[u8],
+    request_id: &str,
+) -> Result<Payload, NativeAgentError> {
+    let response: AgentResponse<Payload> =
         serde_json::from_slice(line).map_err(|_| NativeAgentError::protocol())?;
 
     if response.id.as_deref() != Some(request_id) || response.version != PROTOCOL_VERSION {
@@ -164,7 +181,7 @@ fn parse_response(
     }
 
     match (response.result, response.error) {
-        (Some(result), None) => normalize_health(result, app_version),
+        (Some(result), None) => Ok(result),
         (None, Some(error)) => {
             let _ = (error.code, error.message);
             Err(NativeAgentError::protocol())

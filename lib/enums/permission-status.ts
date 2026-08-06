@@ -4,4 +4,5 @@ export enum PermissionStatus {
   NotDetermined = "not-determined",
   Restricted = "restricted",
   Unsupported = "unsupported",
+  Unknown = "unknown",
 }

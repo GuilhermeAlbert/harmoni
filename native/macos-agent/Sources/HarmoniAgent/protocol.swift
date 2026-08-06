@@ -6,10 +6,12 @@ struct RequestEnvelope: Decodable {
     let id: String
     let version: Int
     let method: String
-    let params: AgentInfoParameters
+    let params: RequestParameters
 }
 
-struct AgentInfoParameters: Codable {}
+struct RequestParameters: Codable {
+    let category: String?
+}
 
 struct AgentInfoResult: Encodable {
     let agentVersion: String
@@ -22,6 +24,23 @@ struct AgentInfoResult: Encodable {
 struct ErrorPayload: Encodable {
     let code: String
     let message: String
+}
+
+enum ResultPayload: Encodable {
+    case agentInfo(AgentInfoResult)
+    case permissionStatus(PermissionStatusResult)
+    case openSettings(OpenSettingsResult)
+
+    func encode(to encoder: Encoder) throws {
+        switch self {
+        case let .agentInfo(result):
+            try result.encode(to: encoder)
+        case let .permissionStatus(result):
+            try result.encode(to: encoder)
+        case let .openSettings(result):
+            try result.encode(to: encoder)
+        }
+    }
 }
 
 struct DeviceEventEnvelope: Encodable {
@@ -52,7 +71,7 @@ enum AgentOutput: Encodable {
 }
 
 enum ResponseEnvelope: Encodable {
-    case result(id: String, value: AgentInfoResult)
+    case result(id: String, value: ResultPayload)
     case error(id: String?, value: ErrorPayload)
 
     private enum CodingKeys: String, CodingKey {

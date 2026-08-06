@@ -1,6 +1,5 @@
 "use client";
 
-import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { MonitorCog, Power } from "lucide-react";
 
@@ -17,27 +16,11 @@ import { Switch } from "@/components/switch";
 import { ThemeSelector } from "@/components/theme-selector";
 import { useLanguage } from "@/contexts/language/use-language";
 import { useNativeAgent } from "@/contexts/native-agent/use-native-agent";
-import { PERMISSION_FIXTURES } from "@/lib/constants/permission-fixtures";
 import { NativeAgentState } from "@/lib/enums/native-agent-state";
-import { SettingsFixtureState } from "@/lib/enums/settings-fixture-state";
-
-const SETTINGS_FIXTURE_STATES = [
-  SettingsFixtureState.Success,
-  SettingsFixtureState.Loading,
-  SettingsFixtureState.Empty,
-  SettingsFixtureState.Error,
-] as const;
-
-function isSettingsFixtureState(value: string): value is SettingsFixtureState {
-  return SETTINGS_FIXTURE_STATES.some((state) => state === value);
-}
 
 export function SettingsScreen(): React.ReactNode {
   const [feedback, setFeedback] = useState("");
   const [launchAtLogin, setLaunchAtLogin] = useState(false);
-  const [permissionState, setPermissionState] = useState(
-    SettingsFixtureState.Success,
-  );
   const { messages } = useLanguage();
   const { health, retry, state } = useNativeAgent();
   const nativeMessages = messages.nativeAgent;
@@ -50,14 +33,6 @@ export function SettingsScreen(): React.ReactNode {
         ? settingsMessages.feedback.launchEnabled
         : settingsMessages.feedback.launchDisabled,
     );
-  };
-
-  const handlePermissionStateChange = (
-    event: ChangeEvent<HTMLSelectElement>,
-  ): void => {
-    if (isSettingsFixtureState(event.target.value)) {
-      setPermissionState(event.target.value);
-    }
   };
 
   return (
@@ -134,29 +109,7 @@ export function SettingsScreen(): React.ReactNode {
             </div>
           </Panel>
 
-          <label className="grid max-w-sm gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            {settingsMessages.permissionStateLabel}
-            <select
-              className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:focus-visible:outline-white"
-              onChange={handlePermissionStateChange}
-              value={permissionState}
-            >
-              {SETTINGS_FIXTURE_STATES.map((state) => (
-                <option key={state} value={state}>
-                  {settingsMessages.states[state]}
-                </option>
-              ))}
-            </select>
-            <span className="font-normal text-zinc-500">
-              {settingsMessages.permissionStateHint}
-            </span>
-          </label>
-
-          <PermissionSummary
-            fixtureState={permissionState}
-            messages={settingsMessages}
-            permissions={PERMISSION_FIXTURES}
-          />
+          <PermissionSummary messages={settingsMessages} />
 
           <Panel className="overflow-hidden">
             <header className="border-b border-zinc-200 px-5 py-4 dark:border-white/[0.08]">
