@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Next.js and frontend builds
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Rust and Tauri builds
+target/
+src-tauri/target/
+
+# Swift builds
+.build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Tauri bundles and generated artifacts
+src-tauri/gen/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+
+# Logs and package-manager diagnostics
+*.log
+yarn-error.log
+npm-debug.log*
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local tooling
+.turbo/
+.vercel/
