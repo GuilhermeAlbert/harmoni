@@ -1,7 +1,5 @@
-import { PagePlaceholder } from "../_components/page-placeholder";
-import { DashboardPath } from "@/lib/enums/dashboard-path";
+import { AudioScreen } from "./_components/audio-screen";
 
 export default function AudioPage(): React.ReactNode {
-  return <PagePlaceholder path={DashboardPath.Audio} />;
+  return <AudioScreen />;
 }
-
