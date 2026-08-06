@@ -19,13 +19,11 @@ export function Brand({ compact = false }: BrandProps): React.ReactNode {
         unoptimized
         width={40}
       />
+
       {compact ? null : (
         <span>
           <span className="block font-[family-name:var(--font-geist)] text-sm font-semibold text-zinc-950 dark:text-zinc-50">
             Harmoni
-          </span>
-          <span className="mt-0.5 block text-xs text-zinc-500">
-            {messages.brand.subtitle}
           </span>
         </span>
       )}
