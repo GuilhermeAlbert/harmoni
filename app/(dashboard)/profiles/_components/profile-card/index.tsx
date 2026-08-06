@@ -7,7 +7,7 @@ import { Button } from "@/components/button";
 import { ButtonSize, ButtonVariant } from "@/components/button/enums";
 import { Panel } from "@/components/panel";
 import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
-import { CAMERA_FIXTURES } from "@/lib/constants/camera-fixtures";
+import { useCameras } from "@/contexts/cameras/use-cameras";
 import { ProfileOrigin } from "@/lib/enums/profile-origin";
 
 export function ProfileCard({
@@ -17,6 +17,7 @@ export function ProfileCard({
   profile,
 }: ProfileCardProps): React.ReactNode {
   const { devices: audioDevices } = useAudioDevices();
+  const { cameras } = useCameras();
   const presetMessages = profile.preset
     ? messages.presets[profile.preset]
     : null;
@@ -31,7 +32,7 @@ export function ProfileCard({
       (device) => device.id === profile.preferences.audioOutputId,
     )?.name ?? profile.preferences.audioOutputId;
   const cameraName =
-    CAMERA_FIXTURES.find(
+    cameras.find(
       (camera) => camera.id === profile.preferences.cameraId,
     )?.name ?? profile.preferences.cameraId;
 

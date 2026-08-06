@@ -99,6 +99,17 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         watchAudioDeviceEvents()
     }
 
+    if request.method == "camera.devices" {
+        return .response(.result(
+            id: request.id,
+            value: .cameras(discoverCameras())
+        ))
+    }
+
+    if request.method == "camera.watchDeviceEvents" {
+        watchCameraDeviceEvents()
+    }
+
     guard request.method == "agent.info" else {
         return .response(makeErrorResponse(
             id: request.id,

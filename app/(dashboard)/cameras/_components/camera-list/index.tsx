@@ -3,15 +3,19 @@ import { Camera as CameraIcon } from "lucide-react";
 import type { CameraListProps } from "./types";
 import { Badge } from "@/components/badge";
 import { BadgeTone } from "@/components/badge/enums";
-import { Button } from "@/components/button";
-import { ButtonSize, ButtonVariant } from "@/components/button/enums";
 import { Panel } from "@/components/panel";
-import { CameraStatus } from "@/lib/enums/camera-status";
+import { CameraTransport } from "@/lib/enums/camera-transport";
+
+const TRANSPORT_KEYS = {
+  [CameraTransport.BuiltIn]: "builtIn",
+  [CameraTransport.Continuity]: "continuity",
+  [CameraTransport.External]: "external",
+  [CameraTransport.Unknown]: "unknown",
+} as const;
 
 export function CameraList({
   cameras,
   messages,
-  onMakePreferred,
 }: CameraListProps): React.ReactNode {
   return (
     <Panel className="overflow-hidden">
@@ -21,8 +25,7 @@ export function CameraList({
       </header>
       <ul className="divide-y divide-zinc-200 dark:divide-white/[0.08]">
         {cameras.map((camera) => {
-          const available = camera.status === CameraStatus.Available;
-
+          const format = camera.formats[0];
           return (
             <li className="p-4 sm:p-5" key={camera.id}>
               <article className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -35,28 +38,18 @@ export function CameraList({
                       {camera.name}
                     </h3>
                     <p className="mt-1 text-xs text-zinc-500">
-                      {camera.transport} · {camera.format.width} × {camera.format.height} · {camera.format.frameRate} {messages.framesPerSecond}
+                      {messages.transports[TRANSPORT_KEYS[camera.transport]]}
+                      {format ? ` · ${format.width} × ${format.height} · ${format.frameRate.toFixed(0)} ${messages.framesPerSecond}` : ""}
                     </p>
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <Badge
-                    tone={available ? BadgeTone.Neutral : BadgeTone.Danger}
-                  >
-                    {available ? messages.available : messages.unavailable}
+                  <Badge tone={BadgeTone.Neutral}>
+                    {camera.formats.length} {messages.formats}
                   </Badge>
                   {camera.preferred ? (
                     <Badge tone={BadgeTone.Success}>{messages.preferred}</Badge>
-                  ) : (
-                    <Button
-                      disabled={!available}
-                      onClick={() => onMakePreferred(camera.id)}
-                      size={ButtonSize.Small}
-                      variant={ButtonVariant.Secondary}
-                    >
-                      {messages.makePreferred}
-                    </Button>
-                  )}
+                  ) : null}
                 </div>
               </article>
             </li>

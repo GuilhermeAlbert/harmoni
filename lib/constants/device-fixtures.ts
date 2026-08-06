@@ -5,19 +5,6 @@ import type { Device } from "@/lib/types/device";
 
 export const DEVICE_FIXTURES = [
   {
-    active: true,
-    availability: DeviceAvailabilityStatus.Available,
-    cameraResolution: "4K",
-    cameraZoom: 1.15,
-    category: DeviceCategory.Camera,
-    connection: DeviceConnectionStatus.Connected,
-    default: true,
-    enabled: true,
-    id: "logitech-brio",
-    name: "Logitech Brio",
-    transport: "USB",
-  },
-  {
     active: false,
     availability: DeviceAvailabilityStatus.Available,
     batteryPercent: 82,

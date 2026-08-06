@@ -4,6 +4,4 @@ import type { Messages } from "@/lib/types/messages";
 export interface CameraControlsProps {
   camera: Camera;
   messages: Messages["cameras"];
-  onExposureChange: (value: number) => void;
-  onZoomChange: (value: number) => void;
 }

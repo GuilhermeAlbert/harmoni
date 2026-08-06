@@ -78,6 +78,11 @@ impl DeviceEvent {
         matches!(self.category, DeviceEventCategory::Audio)
             && matches!(self.change, DeviceEventChange::Changed)
     }
+
+    pub(crate) fn is_camera_change(&self) -> bool {
+        matches!(self.category, DeviceEventCategory::Camera)
+            && matches!(self.change, DeviceEventChange::Changed)
+    }
 }
 
 fn is_valid_identifier(identifier: &str) -> bool {

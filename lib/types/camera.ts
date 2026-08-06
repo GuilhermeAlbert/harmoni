@@ -1,4 +1,5 @@
-import type { CameraStatus } from "@/lib/enums/camera-status";
+import type { CameraAuthorization } from "@/lib/enums/camera-authorization";
+import type { CameraTransport } from "@/lib/enums/camera-transport";
 
 export interface CameraFormat {
   readonly frameRate: number;
@@ -6,26 +7,24 @@ export interface CameraFormat {
   readonly width: number;
 }
 
-export interface CameraCapabilityRange {
+export interface CameraCapability {
+  readonly canControl: boolean;
   readonly max: number;
   readonly min: number;
-  readonly step: number;
-}
-
-export interface CameraCapabilities {
-  readonly exposure?: CameraCapabilityRange;
-  readonly zoom?: CameraCapabilityRange;
+  readonly value: number;
 }
 
 export interface Camera {
-  readonly capabilities: CameraCapabilities;
-  readonly exposure: number;
-  readonly format: CameraFormat;
+  readonly exposure: CameraCapability | null;
+  readonly formats: readonly CameraFormat[];
   readonly id: string;
-  readonly live: boolean;
   readonly name: string;
   readonly preferred: boolean;
-  readonly status: CameraStatus;
-  readonly transport: string;
-  readonly zoom: number;
+  readonly transport: CameraTransport;
+  readonly zoom: CameraCapability | null;
+}
+
+export interface CameraDiscovery {
+  readonly authorization: CameraAuthorization;
+  readonly cameras: readonly Camera[];
 }

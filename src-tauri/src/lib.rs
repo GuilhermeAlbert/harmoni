@@ -7,8 +7,10 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(events::AudioEventProcess::default())
+        .manage(events::CameraEventProcess::default())
         .setup(|app| {
             events::start_audio_device_events(app.handle().clone());
+            events::start_camera_device_events(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -17,6 +19,7 @@ pub fn run() {
             commands::audio::set_audio_volume,
             commands::audio::set_default_audio_input,
             commands::audio::set_default_audio_output,
+            commands::camera::get_cameras,
             commands::native_agent::get_agent_health,
             commands::device_events::trigger_development_device_event,
             commands::permissions::get_permission_status,
@@ -28,6 +31,7 @@ pub fn run() {
     app.run(|app_handle, event| {
         if matches!(event, tauri::RunEvent::Exit) {
             events::stop_audio_device_events(app_handle);
+            events::stop_camera_device_events(app_handle);
         }
     });
 }

@@ -1,22 +1,14 @@
 import type { CameraControlsProps } from "./types";
 import { Panel } from "@/components/panel";
-import { Slider } from "@/components/slider";
-import { CameraStatus } from "@/lib/enums/camera-status";
 
 export function CameraControls({
   camera,
   messages,
-  onExposureChange,
-  onZoomChange,
 }: CameraControlsProps): React.ReactNode {
-  const available = camera.status === CameraStatus.Available;
-  const zoomCapability = camera.capabilities.zoom;
-  const exposureCapability = camera.capabilities.exposure;
-  const zoomDisabled = !available || !zoomCapability;
-  const exposureDisabled = !available || !exposureCapability;
-  const disabledReason = available
-    ? messages.unsupported
-    : messages.unavailableReason;
+  const capabilities = [
+    { capability: camera.zoom, label: messages.zoom },
+    { capability: camera.exposure, label: messages.exposure },
+  ];
 
   return (
     <Panel className="p-5">
@@ -25,46 +17,22 @@ export function CameraControls({
         {messages.controlsDescription}
       </p>
 
-      <div className="mt-7">
-        <Slider
-          disabled={zoomDisabled}
-          label={messages.zoom}
-          max={zoomCapability?.max ?? 1}
-          min={zoomCapability?.min ?? 0}
-          name={`${camera.id}-zoom`}
-          onChange={(event) => onZoomChange(Number(event.target.value))}
-          step={zoomCapability?.step ?? 1}
-          value={zoomCapability ? camera.zoom : 0}
-          valueText={zoomCapability ? `${camera.zoom.toFixed(2)}×` : undefined}
-        />
-        {zoomDisabled ? (
-          <p className="mt-2 text-xs leading-5 text-amber-800 dark:text-amber-200">
-            {disabledReason}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-7">
-        <Slider
-          disabled={exposureDisabled}
-          label={messages.exposure}
-          max={exposureCapability?.max ?? 1}
-          min={exposureCapability?.min ?? 0}
-          name={`${camera.id}-exposure`}
-          onChange={(event) => onExposureChange(Number(event.target.value))}
-          step={exposureCapability?.step ?? 1}
-          value={exposureCapability ? camera.exposure : 0}
-          valueText={
-            exposureCapability
-              ? camera.exposure.toFixed(1)
-              : undefined
-          }
-        />
-        {exposureDisabled ? (
-          <p className="mt-2 text-xs leading-5 text-amber-800 dark:text-amber-200">
-            {disabledReason}
-          </p>
-        ) : null}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {capabilities.map(({ capability, label }) => (
+          <div className="rounded-xl border border-zinc-200 p-3 dark:border-white/[0.08]" key={label}>
+            <p className="text-xs text-zinc-500">{label}</p>
+            <p className="mt-1 text-sm font-medium">
+              {capability
+                ? `${capability.min.toFixed(1)} – ${capability.max.toFixed(1)}`
+                : messages.unsupported}
+            </p>
+            {capability ? (
+              <p className="mt-1 text-xs text-zinc-500">
+                {messages.currentValue}: {capability.value.toFixed(1)} · {capability.canControl ? messages.controlSupported : messages.readOnlyCapability}
+              </p>
+            ) : null}
+          </div>
+        ))}
       </div>
     </Panel>
   );

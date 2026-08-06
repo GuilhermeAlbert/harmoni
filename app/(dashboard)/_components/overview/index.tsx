@@ -13,7 +13,6 @@ import {
 
 import { DevicePanel } from "./device-panel";
 import { MetricCard } from "./metric-card";
-import { QuickActions } from "./quick-actions";
 import { StateSelector } from "./state-selector";
 import { Badge } from "@/components/badge";
 import { BadgeTone } from "@/components/badge/enums";
@@ -23,10 +22,12 @@ import { EmptyState } from "@/components/empty-state";
 import { Panel } from "@/components/panel";
 import { Spinner } from "@/components/spinner";
 import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
+import { useCameras } from "@/contexts/cameras/use-cameras";
 import { useLanguage } from "@/contexts/language/use-language";
 import { DEVICE_FIXTURES } from "@/lib/constants/device-fixtures";
 import { AudioDirection } from "@/lib/enums/audio-direction";
 import { AudioDiscoveryState } from "@/lib/enums/audio-discovery-state";
+import { CameraDiscoveryState } from "@/lib/enums/camera-discovery-state";
 import { DeviceCategory } from "@/lib/enums/device-category";
 import { DeviceConnectionStatus } from "@/lib/enums/device-connection-status";
 import { OverviewFixtureState } from "@/lib/enums/overview-fixture-state";
@@ -53,8 +54,14 @@ export function Overview(): React.ReactNode {
     refreshing: refreshingAudio,
     state: audioDiscoveryState,
   } = useAudioDevices();
+  const {
+    cameras,
+    refresh: refreshCameras,
+    refreshing: refreshingCameras,
+    state: cameraDiscoveryState,
+  } = useCameras();
   const overviewMessages = messages.overview;
-  const refreshing = refreshingFixtures || refreshingAudio;
+  const refreshing = refreshingFixtures || refreshingAudio || refreshingCameras;
 
   useEffect(
     () => () => {
@@ -77,12 +84,7 @@ export function Overview(): React.ReactNode {
         device.direction === AudioDirection.Output && device.isDefault,
     ) ??
     audioDevices.find((device) => device.direction === AudioDirection.Output);
-  const activeCamera = devices.find(
-    (device) =>
-      device.category === DeviceCategory.Camera &&
-      device.active &&
-      device.enabled,
-  );
+  const activeCamera = cameras.find((camera) => camera.preferred) ?? cameras[0];
   const connectedPeripherals = devices.filter(
     (device) =>
       [
@@ -115,6 +117,7 @@ export function Overview(): React.ReactNode {
 
     setRefreshingFixtures(true);
     refreshAudioDevices();
+    refreshCameras();
     setFeedback("");
     refreshTimerRef.current = setTimeout(() => {
       setDevices(copyDeviceFixtures());
@@ -123,44 +126,6 @@ export function Overview(): React.ReactNode {
       setFeedback(overviewMessages.feedback.refreshed);
       refreshTimerRef.current = null;
     }, REFRESH_FEEDBACK_DELAY_MS);
-  };
-
-  const handlePrivacyMode = (): void => {
-    setDevices((currentDevices) =>
-      currentDevices.map((device) =>
-        device.category === DeviceCategory.Camera
-          ? { ...device, active: false, enabled: false }
-          : device,
-      ),
-    );
-    setFeedback(overviewMessages.feedback.privacyEnabled);
-  };
-
-  const handleApplyWorkProfile = (): void => {
-    setDevices(copyDeviceFixtures());
-    setFeedback(overviewMessages.feedback.workApplied);
-  };
-
-  const handleDisableCameras = (): void => {
-    setDevices((currentDevices) =>
-      currentDevices.map((device) =>
-        device.category === DeviceCategory.Camera
-          ? { ...device, active: false, enabled: false }
-          : device,
-      ),
-    );
-    setFeedback(overviewMessages.feedback.camerasDisabled);
-  };
-
-  const handleSelectRecordingProfile = (): void => {
-    setDevices((currentDevices) =>
-      currentDevices.map((device) =>
-        device.category === DeviceCategory.Camera
-          ? { ...device, active: true, enabled: true, muted: false }
-          : device,
-      ),
-    );
-    setFeedback(overviewMessages.feedback.recordingApplied);
   };
 
   const describeAudioDevice = (
@@ -189,9 +154,13 @@ export function Overview(): React.ReactNode {
   };
   const audioInputDescription = describeAudioDevice(activeAudioInput);
   const audioOutputDescription = describeAudioDevice(activeAudioOutput);
-  const cameraDescription = activeCamera
-    ? `${activeCamera.cameraResolution} · ${activeCamera.cameraZoom?.toFixed(2)}× ${overviewMessages.metrics.zoom}`
-    : overviewMessages.metrics.noActiveDevice;
+  const cameraFormat = activeCamera?.formats[0];
+  const cameraDescription =
+    cameraDiscoveryState === CameraDiscoveryState.Error
+      ? overviewMessages.metrics.cameraUnavailable
+      : cameraFormat
+        ? `${cameraFormat.width} × ${cameraFormat.height} · ${cameraFormat.frameRate.toFixed(0)} fps`
+        : overviewMessages.metrics.noActiveDevice;
 
   return (
     <main className="px-4 py-8 sm:px-6 lg:px-8">
@@ -210,12 +179,6 @@ export function Overview(): React.ReactNode {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handlePrivacyMode} variant={ButtonVariant.Secondary}>
-              {overviewMessages.privacyMode}
-            </Button>
-            <Button onClick={handleApplyWorkProfile}>
-              {overviewMessages.applyWorkProfile}
-            </Button>
             <Button
               aria-busy={refreshing}
               disabled={refreshing}
@@ -320,7 +283,9 @@ export function Overview(): React.ReactNode {
                 icon={Camera}
                 title={overviewMessages.metrics.camera}
                 value={
-                  activeCamera?.name ?? overviewMessages.metrics.noActiveDevice
+                  cameraDiscoveryState === CameraDiscoveryState.Loading
+                    ? overviewMessages.metrics.loading
+                    : (activeCamera?.name ?? overviewMessages.metrics.noActiveDevice)
                 }
               />
               <MetricCard
@@ -331,16 +296,11 @@ export function Overview(): React.ReactNode {
               />
             </div>
 
-            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
+            <div className="mt-4">
               <DevicePanel
                 devices={devices}
                 messages={overviewMessages.devices}
                 onToggleDevice={handleToggleDevice}
-              />
-              <QuickActions
-                messages={overviewMessages.quickActions}
-                onDisableCameras={handleDisableCameras}
-                onSelectRecordingProfile={handleSelectRecordingProfile}
               />
             </div>
           </>

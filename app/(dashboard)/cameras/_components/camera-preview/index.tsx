@@ -1,4 +1,4 @@
-import { Camera as CameraIcon, Circle } from "lucide-react";
+import { Camera as CameraIcon } from "lucide-react";
 
 import type { CameraPreviewProps } from "./types";
 import { Badge } from "@/components/badge";
@@ -9,6 +9,7 @@ export function CameraPreview({
   camera,
   messages,
 }: CameraPreviewProps): React.ReactNode {
+  const format = camera.formats[0];
   return (
     <Panel className="overflow-hidden p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -35,19 +36,17 @@ export function CameraPreview({
               {camera.name}
             </p>
             <p className="mt-1 font-[family-name:var(--font-commit-mono)] text-xs">
-              {camera.format.width} × {camera.format.height} · {camera.format.frameRate} {messages.framesPerSecond}
+              {format
+                ? `${format.width} × ${format.height} · ${format.frameRate.toFixed(0)} ${messages.framesPerSecond}`
+                : messages.noFormats}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-        <Circle
-          aria-hidden="true"
-          className="size-2 fill-emerald-500 text-emerald-500"
-        />
-        {camera.live ? messages.live : messages.preferred}
-      </div>
+      <p className="mt-4 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        {messages.previewNotStarted}
+      </p>
     </Panel>
   );
 }

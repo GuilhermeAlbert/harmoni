@@ -4,6 +4,9 @@ import PackageDescription
 
 let package = Package(
     name: "HarmoniAgent",
+    platforms: [
+        .macOS(.v14),
+    ],
     products: [
         .executable(name: "harmoni-agent", targets: ["HarmoniAgent"]),
     ],

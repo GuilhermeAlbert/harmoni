@@ -7,9 +7,8 @@ import { Button } from "@/components/button";
 import { ButtonVariant } from "@/components/button/enums";
 import { Panel } from "@/components/panel";
 import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
-import { CAMERA_FIXTURES } from "@/lib/constants/camera-fixtures";
+import { useCameras } from "@/contexts/cameras/use-cameras";
 import { AudioDirection } from "@/lib/enums/audio-direction";
-import { CameraStatus } from "@/lib/enums/camera-status";
 
 const FIELD_CLASSES =
   "min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950 aria-invalid:border-red-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:focus-visible:outline-white";
@@ -24,6 +23,7 @@ export function ProfileForm({
     ? messages.presets[profile.preset]
     : null;
   const { devices: audioDevices } = useAudioDevices();
+  const { cameras } = useCameras();
   const schema = createProfileFormSchema(messages.form.validation);
   const {
     control,
@@ -51,9 +51,6 @@ export function ProfileForm({
   );
   const audioOutputs = audioDevices.filter(
     (device) => device.direction === AudioDirection.Output,
-  );
-  const cameras = CAMERA_FIXTURES.filter(
-    (camera) => camera.status === CameraStatus.Available,
   );
   const inputVolume = useWatch({ control, name: "inputVolume" });
 
