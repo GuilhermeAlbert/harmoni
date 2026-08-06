@@ -13,6 +13,43 @@ export const ES_MESSAGES = {
   language: {
     label: "Idioma",
   },
+  navigation: {
+    mainLabel: "Navegación principal",
+    workspace: "Espacio de trabajo",
+    openMenu: "Abrir navegación",
+    closeMenu: "Cerrar navegación",
+  },
+  routes: {
+    overview: {
+      label: "Resumen",
+      subtitle: "Tu configuración activa de un vistazo.",
+    },
+    audio: {
+      label: "Audio",
+      subtitle: "Micrófonos, salidas, volumen y silencio.",
+    },
+    cameras: {
+      label: "Cámaras",
+      subtitle: "Cámara preferida y controles compatibles.",
+    },
+    peripherals: {
+      label: "Periféricos",
+      subtitle: "Teclados, ratones y dispositivos conectados.",
+    },
+    profiles: {
+      label: "Perfiles",
+      subtitle: "Cambia configuraciones completas de forma consistente.",
+    },
+    settings: {
+      label: "Ajustes",
+      subtitle: "Permisos y comportamiento de la aplicación.",
+    },
+  },
+  routePlaceholder: {
+    eyebrow: "Espacio de trabajo",
+    description:
+      "Esta ruta está lista para su especificación de producto dedicada.",
+  },
   theme: {
     label: "Apariencia",
     light: "Claro",
@@ -47,4 +84,3 @@ export const ES_MESSAGES = {
     checkAgain: "Comprobar de nuevo",
   },
 } satisfies Messages;
-
