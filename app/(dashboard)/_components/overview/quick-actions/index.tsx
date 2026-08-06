@@ -1,4 +1,4 @@
-import { ChevronRight, MicOff, VideoOff, Waves } from "lucide-react";
+import { ChevronRight, VideoOff, Waves } from "lucide-react";
 
 import type { QuickActionsProps } from "./types";
 import { Panel } from "@/components/panel";
@@ -6,16 +6,9 @@ import { Panel } from "@/components/panel";
 export function QuickActions({
   messages,
   onDisableCameras,
-  onMuteMicrophones,
   onSelectRecordingProfile,
 }: QuickActionsProps): React.ReactNode {
   const actions = [
-    {
-      description: messages.muteMicrophonesHint,
-      icon: MicOff,
-      label: messages.muteMicrophones,
-      onClick: onMuteMicrophones,
-    },
     {
       description: messages.disableCamerasHint,
       icon: VideoOff,

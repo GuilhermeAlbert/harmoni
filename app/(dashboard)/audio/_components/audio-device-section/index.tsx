@@ -6,6 +6,10 @@ export function AudioDeviceSection({
   description,
   devices,
   messages,
+  onSetDefault,
+  onSetMute,
+  onSetVolume,
+  pending,
   title,
 }: AudioDeviceSectionProps): React.ReactNode {
   return (
@@ -19,8 +23,12 @@ export function AudioDeviceSection({
           {devices.map((device) => (
             <AudioDeviceCard
               device={device}
-              key={device.id}
+              key={`${device.id}:${device.isDefault}:${device.muted}:${device.volume}`}
               messages={messages}
+              onSetDefault={onSetDefault}
+              onSetMute={onSetMute}
+              onSetVolume={onSetVolume}
+              pending={pending}
             />
           ))}
         </ul>

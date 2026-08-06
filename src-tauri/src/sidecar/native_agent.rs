@@ -38,6 +38,9 @@ pub(crate) struct NativeAgentError {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 enum NativeAgentErrorCode {
+    InvalidArgument,
+    NotFound,
+    Unsupported,
     Unavailable,
     Timeout,
     Protocol,
@@ -197,8 +200,14 @@ fn parse_agent_result_line<Payload: DeserializeOwned>(
     match (response.result, response.error) {
         (Some(result), None) => Ok(result),
         (None, Some(error)) => {
-            let _ = (error.code, error.message);
-            Err(NativeAgentError::protocol())
+            let _ = error.message;
+            Err(match error.code.as_str() {
+                "invalid_argument" => NativeAgentError::invalid_argument(),
+                "not_found" => NativeAgentError::not_found(),
+                "unsupported" => NativeAgentError::unsupported(),
+                "process" => NativeAgentError::process(),
+                _ => NativeAgentError::protocol(),
+            })
         }
         _ => Err(NativeAgentError::protocol()),
     }
@@ -253,6 +262,27 @@ impl NativeAgentError {
         Self {
             code: NativeAgentErrorCode::Process,
             message: "The native agent process failed.",
+        }
+    }
+
+    pub(crate) fn invalid_argument() -> Self {
+        Self {
+            code: NativeAgentErrorCode::InvalidArgument,
+            message: "The audio mutation arguments are invalid.",
+        }
+    }
+
+    fn not_found() -> Self {
+        Self {
+            code: NativeAgentErrorCode::NotFound,
+            message: "The requested audio device was not found.",
+        }
+    }
+
+    fn unsupported() -> Self {
+        Self {
+            code: NativeAgentErrorCode::Unsupported,
+            message: "The requested audio control is unsupported.",
         }
     }
 }

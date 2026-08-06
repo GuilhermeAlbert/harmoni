@@ -110,8 +110,6 @@ export const ES_MESSAGES = {
     quickActions: {
       title: "Acciones rápidas",
       description: "Demostraciones locales de rutinas comunes.",
-      muteMicrophones: "Controles de audio",
-      muteMicrophonesHint: "La detección es de solo lectura en esta etapa",
       disableCameras: "Desactivar todas las cámaras",
       disableCamerasHint: "Entra en el modo de privacidad simulado",
       recordingProfile: "Perfil Grabación",
@@ -131,7 +129,6 @@ export const ES_MESSAGES = {
       deviceDisabled: "Dispositivo desactivado en esta simulación.",
       privacyEnabled: "Modo de privacidad simulado activado.",
       workApplied: "Perfil Trabajo simulado aplicado.",
-      audioReadOnly: "La detección de audio es de solo lectura. No se cambió ningún ajuste del sistema.",
       camerasDisabled: "Todas las cámaras simuladas fueron desactivadas.",
       recordingApplied: "Perfil Grabación simulado aplicado.",
     },
@@ -141,7 +138,7 @@ export const ES_MESSAGES = {
     eyebrow: "Espacio de audio",
     title: "Entradas y salidas afinadas en un solo lugar.",
     description:
-      "Consulta los dispositivos predeterminados, el volumen, el silencio y las capacidades informadas por macOS. Esta vista es de solo lectura.",
+      "Consulta y cambia dispositivos predeterminados, volumen y silencio cuando Core Audio de macOS lo permita.",
     refresh: "Actualizar audio",
     refreshing: "Actualizando audio",
     inputsTitle: "Entradas de audio",
@@ -151,7 +148,12 @@ export const ES_MESSAGES = {
     noDevicesInDirection: "No hay dispositivos informados en esta dirección.",
     defaultInput: "Entrada predeterminada",
     defaultOutput: "Salida predeterminada",
+    makeDefault: "Usar como predeterminado",
+    settingDefault: "Definiendo como predeterminado",
     volume: "Volumen",
+    mute: "Silenciar",
+    unmute: "Activar sonido",
+    saving: "Guardando",
     muteStatus: "Estado de silencio",
     muted: "Silenciado",
     unmuted: "Con sonido",
@@ -159,6 +161,9 @@ export const ES_MESSAGES = {
     available: "Disponible",
     unavailableReading: "No disponible",
     readOnly: "Solo lectura",
+    unsupportedDefault: "macOS no permite usar este dispositivo como predeterminado.",
+    unsupportedVolume: "El control de volumen no está disponible para este dispositivo.",
+    unsupportedMute: "El control de silencio no está disponible para este dispositivo.",
     transports: {
       builtIn: "Integrado",
       bluetooth: "Bluetooth",
@@ -176,6 +181,13 @@ export const ES_MESSAGES = {
     errorDescription:
       "Harmoni no pudo leer la lista actual de Core Audio. No se usaron dispositivos simulados.",
     retry: "Intentar de nuevo",
+    feedback: {
+      saving: "Aplicando el cambio de audio a macOS.",
+      defaultSuccess: "Dispositivo de audio predeterminado cambiado.",
+      volumeSuccess: "Volumen cambiado.",
+      muteSuccess: "Estado de silencio cambiado.",
+      failure: "El cambio falló. Se restauró el valor anterior.",
+    },
   },
   cameras: {
     fixtureLabel: "Datos simulados de fixture",

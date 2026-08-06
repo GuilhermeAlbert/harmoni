@@ -57,6 +57,44 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         ))
     }
 
+    if request.method == "audio.setDefaultInput" {
+        return audioMutationOutput(request: request) {
+            setDefaultAudioDevice(stableID: $0, direction: "input")
+        }
+    }
+
+    if request.method == "audio.setDefaultOutput" {
+        return audioMutationOutput(request: request) {
+            setDefaultAudioDevice(stableID: $0, direction: "output")
+        }
+    }
+
+    if request.method == "audio.setVolume" {
+        guard let volume = request.params.volume else {
+            return .response(makeErrorResponse(
+                id: request.id,
+                code: "invalid_argument",
+                message: "Volume is required."
+            ))
+        }
+        return audioMutationOutput(request: request) {
+            setAudioVolume(stableID: $0, volume: volume)
+        }
+    }
+
+    if request.method == "audio.setMute" {
+        guard let muted = request.params.muted else {
+            return .response(makeErrorResponse(
+                id: request.id,
+                code: "invalid_argument",
+                message: "Mute state is required."
+            ))
+        }
+        return audioMutationOutput(request: request) {
+            setAudioMute(stableID: $0, muted: muted)
+        }
+    }
+
     if request.method == "audio.watchDeviceEvents" {
         watchAudioDeviceEvents()
     }
@@ -79,6 +117,32 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
     )
 
     return .response(.result(id: request.id, value: .agentInfo(result)))
+}
+
+private func audioMutationOutput(
+    request: RequestEnvelope,
+    mutation: (String) -> Result<AudioMutationResult, AudioMutationFailure>
+) -> AgentOutput {
+    guard let deviceID = request.params.deviceId, !deviceID.isEmpty else {
+        return .response(makeErrorResponse(
+            id: request.id,
+            code: "invalid_argument",
+            message: "Audio device id is required."
+        ))
+    }
+    switch mutation(deviceID) {
+    case let .success(result):
+        return .response(.result(
+            id: request.id,
+            value: .audioMutation(result)
+        ))
+    case let .failure(error):
+        return .response(makeErrorResponse(
+            id: request.id,
+            code: error.code,
+            message: error.message
+        ))
+    }
 }
 
 private func currentArchitecture() -> String {

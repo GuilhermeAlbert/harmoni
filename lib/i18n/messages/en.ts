@@ -107,8 +107,6 @@ export const EN_MESSAGES = {
     quickActions: {
       title: "Quick actions",
       description: "Local demonstrations of common routines.",
-      muteMicrophones: "Audio controls",
-      muteMicrophonesHint: "Discovery is read-only in this increment",
       disableCameras: "Disable all cameras",
       disableCamerasHint: "Enter simulated privacy mode",
       recordingProfile: "Recording profile",
@@ -128,7 +126,6 @@ export const EN_MESSAGES = {
       deviceDisabled: "Device disabled in this simulation.",
       privacyEnabled: "Simulated privacy mode enabled.",
       workApplied: "Simulated Work profile applied.",
-      audioReadOnly: "Audio discovery is read-only. No system setting was changed.",
       camerasDisabled: "All simulated cameras disabled.",
       recordingApplied: "Simulated Recording profile applied.",
     },
@@ -138,7 +135,7 @@ export const EN_MESSAGES = {
     eyebrow: "Audio workspace",
     title: "Inputs and outputs, tuned in one place.",
     description:
-      "Inspect the current default devices, volume, mute state, and capabilities reported by macOS. This view is read-only.",
+      "Inspect and change supported default devices, volume, and mute settings through macOS Core Audio.",
     refresh: "Refresh audio",
     refreshing: "Refreshing audio",
     inputsTitle: "Audio inputs",
@@ -148,7 +145,12 @@ export const EN_MESSAGES = {
     noDevicesInDirection: "No devices reported in this direction.",
     defaultInput: "Default input",
     defaultOutput: "Default output",
+    makeDefault: "Make default",
+    settingDefault: "Setting default",
     volume: "Volume",
+    mute: "Mute",
+    unmute: "Unmute",
+    saving: "Saving",
     muteStatus: "Mute status",
     muted: "Muted",
     unmuted: "Unmuted",
@@ -156,6 +158,9 @@ export const EN_MESSAGES = {
     available: "Available",
     unavailableReading: "Unavailable",
     readOnly: "Read-only",
+    unsupportedDefault: "macOS does not allow changing the default to this device.",
+    unsupportedVolume: "Volume control is unavailable for this device.",
+    unsupportedMute: "Mute control is unavailable for this device.",
     transports: {
       builtIn: "Built-in",
       bluetooth: "Bluetooth",
@@ -173,6 +178,13 @@ export const EN_MESSAGES = {
     errorDescription:
       "Harmoni could not read the current Core Audio device list. No simulated devices were substituted.",
     retry: "Try again",
+    feedback: {
+      saving: "Applying the audio change to macOS.",
+      defaultSuccess: "Default audio device changed.",
+      volumeSuccess: "Volume changed.",
+      muteSuccess: "Mute state changed.",
+      failure: "The change failed. The previous value was restored.",
+    },
   },
   cameras: {
     fixtureLabel: "Simulated fixture data",

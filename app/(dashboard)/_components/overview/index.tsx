@@ -141,10 +141,6 @@ export function Overview(): React.ReactNode {
     setFeedback(overviewMessages.feedback.workApplied);
   };
 
-  const handleMuteMicrophones = (): void => {
-    setFeedback(overviewMessages.feedback.audioReadOnly);
-  };
-
   const handleDisableCameras = (): void => {
     setDevices((currentDevices) =>
       currentDevices.map((device) =>
@@ -344,7 +340,6 @@ export function Overview(): React.ReactNode {
               <QuickActions
                 messages={overviewMessages.quickActions}
                 onDisableCameras={handleDisableCameras}
-                onMuteMicrophones={handleMuteMicrophones}
                 onSelectRecordingProfile={handleSelectRecordingProfile}
               />
             </div>

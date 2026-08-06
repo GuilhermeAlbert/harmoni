@@ -14,9 +14,21 @@ import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
 import { useLanguage } from "@/contexts/language/use-language";
 import { AudioDirection } from "@/lib/enums/audio-direction";
 import { AudioDiscoveryState } from "@/lib/enums/audio-discovery-state";
+import { AudioControl } from "@/lib/enums/audio-control";
+import { AudioMutationStatus } from "@/lib/enums/audio-mutation-status";
 
 export function AudioScreen(): React.ReactNode {
-  const { devices, refresh, refreshing, state } = useAudioDevices();
+  const {
+    devices,
+    mutation,
+    pending,
+    refresh,
+    refreshing,
+    setDefault,
+    setMute,
+    setVolume,
+    state,
+  } = useAudioDevices();
   const { messages } = useLanguage();
   const audioMessages = messages.audio;
   const inputs = devices.filter(
@@ -25,6 +37,15 @@ export function AudioScreen(): React.ReactNode {
   const outputs = devices.filter(
     (device) => device.direction === AudioDirection.Output,
   );
+  const mutationFeedback = mutation
+    ? mutation.status === AudioMutationStatus.Error
+      ? audioMessages.feedback.failure
+      : {
+          [AudioControl.Default]: audioMessages.feedback.defaultSuccess,
+          [AudioControl.Mute]: audioMessages.feedback.muteSuccess,
+          [AudioControl.Volume]: audioMessages.feedback.volumeSuccess,
+        }[mutation.control]
+    : "";
 
   return (
     <main className="px-4 py-8 sm:px-6 lg:px-8">
@@ -61,7 +82,11 @@ export function AudioScreen(): React.ReactNode {
           className="mt-5 min-h-5 text-sm font-medium text-zinc-700 dark:text-zinc-300"
           role="status"
         >
-          {refreshing ? audioMessages.refreshing : ""}
+          {pending
+            ? audioMessages.feedback.saving
+            : refreshing
+              ? audioMessages.refreshing
+              : mutationFeedback}
         </p>
 
         {state === AudioDiscoveryState.Loading ? (
@@ -108,12 +133,20 @@ export function AudioScreen(): React.ReactNode {
               description={audioMessages.inputsDescription}
               devices={inputs}
               messages={audioMessages}
+              onSetDefault={setDefault}
+              onSetMute={setMute}
+              onSetVolume={setVolume}
+              pending={pending}
               title={audioMessages.inputsTitle}
             />
             <AudioDeviceSection
               description={audioMessages.outputsDescription}
               devices={outputs}
               messages={audioMessages}
+              onSetDefault={setDefault}
+              onSetMute={setMute}
+              onSetVolume={setVolume}
+              pending={pending}
               title={audioMessages.outputsTitle}
             />
           </div>

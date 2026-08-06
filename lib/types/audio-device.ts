@@ -4,6 +4,9 @@ import type { AudioTransport } from "@/lib/enums/audio-transport";
 export interface AudioDevice {
   readonly canReadMute: boolean;
   readonly canReadVolume: boolean;
+  readonly canSetDefault: boolean;
+  readonly canSetMute: boolean;
+  readonly canSetVolume: boolean;
   readonly direction: AudioDirection;
   readonly id: string;
   readonly isDefault: boolean;

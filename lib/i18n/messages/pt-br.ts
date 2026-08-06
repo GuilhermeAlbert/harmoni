@@ -110,8 +110,6 @@ export const PT_BR_MESSAGES = {
     quickActions: {
       title: "Ações rápidas",
       description: "Demonstrações locais de rotinas comuns.",
-      muteMicrophones: "Controles de áudio",
-      muteMicrophonesHint: "A descoberta é somente leitura nesta etapa",
       disableCameras: "Desativar todas as câmeras",
       disableCamerasHint: "Entre no modo de privacidade simulado",
       recordingProfile: "Perfil Gravação",
@@ -131,7 +129,6 @@ export const PT_BR_MESSAGES = {
       deviceDisabled: "Dispositivo desativado nesta simulação.",
       privacyEnabled: "Modo de privacidade simulado ativado.",
       workApplied: "Perfil Trabalho simulado aplicado.",
-      audioReadOnly: "A descoberta de áudio é somente leitura. Nenhum ajuste do sistema foi alterado.",
       camerasDisabled: "Todas as câmeras simuladas foram desativadas.",
       recordingApplied: "Perfil Gravação simulado aplicado.",
     },
@@ -141,7 +138,7 @@ export const PT_BR_MESSAGES = {
     eyebrow: "Área de áudio",
     title: "Entradas e saídas afinadas em um só lugar.",
     description:
-      "Consulte os dispositivos padrão, volume, estado de mudo e capacidades informadas pelo macOS. Esta tela é somente leitura.",
+      "Consulte e altere dispositivos padrão, volume e mudo quando o Core Audio do macOS permitir.",
     refresh: "Atualizar áudio",
     refreshing: "Atualizando áudio",
     inputsTitle: "Entradas de áudio",
@@ -151,7 +148,12 @@ export const PT_BR_MESSAGES = {
     noDevicesInDirection: "Nenhum dispositivo informado nesta direção.",
     defaultInput: "Entrada padrão",
     defaultOutput: "Saída padrão",
+    makeDefault: "Tornar padrão",
+    settingDefault: "Definindo como padrão",
     volume: "Volume",
+    mute: "Silenciar",
+    unmute: "Ativar som",
+    saving: "Salvando",
     muteStatus: "Estado de mudo",
     muted: "Mudo",
     unmuted: "Com som",
@@ -159,6 +161,9 @@ export const PT_BR_MESSAGES = {
     available: "Disponível",
     unavailableReading: "Indisponível",
     readOnly: "Somente leitura",
+    unsupportedDefault: "O macOS não permite tornar este dispositivo padrão.",
+    unsupportedVolume: "O controle de volume está indisponível para este dispositivo.",
+    unsupportedMute: "O controle de mudo está indisponível para este dispositivo.",
     transports: {
       builtIn: "Integrado",
       bluetooth: "Bluetooth",
@@ -176,6 +181,13 @@ export const PT_BR_MESSAGES = {
     errorDescription:
       "O Harmoni não conseguiu ler a lista atual do Core Audio. Nenhum dispositivo simulado foi usado.",
     retry: "Tentar novamente",
+    feedback: {
+      saving: "Aplicando a alteração de áudio ao macOS.",
+      defaultSuccess: "Dispositivo de áudio padrão alterado.",
+      volumeSuccess: "Volume alterado.",
+      muteSuccess: "Estado de mudo alterado.",
+      failure: "A alteração falhou. O valor anterior foi restaurado.",
+    },
   },
   cameras: {
     fixtureLabel: "Dados simulados de fixture",

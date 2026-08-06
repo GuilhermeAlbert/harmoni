@@ -11,6 +11,9 @@ struct RequestEnvelope: Decodable {
 
 struct RequestParameters: Codable {
     let category: String?
+    let deviceId: String?
+    let volume: Int?
+    let muted: Bool?
 }
 
 struct AgentInfoResult: Encodable {
@@ -29,6 +32,7 @@ struct ErrorPayload: Encodable {
 enum ResultPayload: Encodable {
     case agentInfo(AgentInfoResult)
     case audioDevices(AudioDiscoveryResult)
+    case audioMutation(AudioMutationResult)
     case permissionStatus(PermissionStatusResult)
     case openSettings(OpenSettingsResult)
 
@@ -37,6 +41,8 @@ enum ResultPayload: Encodable {
         case let .agentInfo(result):
             try result.encode(to: encoder)
         case let .audioDevices(result):
+            try result.encode(to: encoder)
+        case let .audioMutation(result):
             try result.encode(to: encoder)
         case let .permissionStatus(result):
             try result.encode(to: encoder)

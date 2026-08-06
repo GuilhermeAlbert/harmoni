@@ -13,6 +13,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::audio::get_audio_devices,
+            commands::audio::set_audio_mute,
+            commands::audio::set_audio_volume,
+            commands::audio::set_default_audio_input,
+            commands::audio::set_default_audio_output,
             commands::native_agent::get_agent_health,
             commands::device_events::trigger_development_device_event,
             commands::permissions::get_permission_status,
