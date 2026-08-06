@@ -7,6 +7,7 @@ out/
 dist/
 coverage/
 *.tsbuildinfo
+next-env.d.ts
 
 # Rust and Tauri builds
 target/
