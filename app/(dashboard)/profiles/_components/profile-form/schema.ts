@@ -6,10 +6,10 @@ export function createProfileFormSchema(
   messages: Messages["profiles"]["form"]["validation"],
 ) {
   return z.object({
-    audioInputId: z.string(),
-    audioOutputId: z.string(),
+    audioInputId: z.string().min(1),
+    audioOutputId: z.string().min(1),
     cameraEnabled: z.boolean(),
-    cameraId: z.string(),
+    cameraId: z.string().min(1),
     description: z
       .string()
       .trim()

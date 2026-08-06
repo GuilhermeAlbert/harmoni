@@ -24,6 +24,9 @@ export function ProfileForm({
     : null;
   const { devices: audioDevices } = useAudioDevices();
   const { cameras } = useCameras();
+  const defaultInput = audioDevices.find((device) => device.direction === AudioDirection.Input)?.id ?? "";
+  const defaultOutput = audioDevices.find((device) => device.direction === AudioDirection.Output)?.id ?? "";
+  const defaultCamera = cameras.find((camera) => camera.preferred)?.id ?? cameras[0]?.id ?? "";
   const schema = createProfileFormSchema(messages.form.validation);
   const {
     control,
@@ -32,12 +35,10 @@ export function ProfileForm({
     register,
   } = useForm<ProfileFormValues>({
     defaultValues: {
-      audioInputId:
-        profile?.preferences.audioInputId ?? "shure-mv7-input",
-      audioOutputId:
-        profile?.preferences.audioOutputId ?? "studio-display-output",
+      audioInputId: profile?.preferences.audioInputId ?? defaultInput,
+      audioOutputId: profile?.preferences.audioOutputId ?? defaultOutput,
       cameraEnabled: profile?.preferences.cameraEnabled ?? true,
-      cameraId: profile?.preferences.cameraId ?? "logitech-brio",
+      cameraId: profile?.preferences.cameraId ?? defaultCamera,
       description:
         profile?.description ?? presetMessages?.description ?? "",
       inputVolume: profile?.preferences.inputVolume ?? 65,

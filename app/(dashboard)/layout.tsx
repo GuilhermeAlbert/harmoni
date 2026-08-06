@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/components/layouts/dashboard";
 import { AudioDevicesProvider } from "@/contexts/audio-devices";
 import { CamerasProvider } from "@/contexts/cameras";
 import { NativeAgentProvider } from "@/contexts/native-agent";
+import { PeripheralsProvider } from "@/contexts/peripherals";
 
 export default function Layout({
   children,
@@ -12,7 +13,7 @@ export default function Layout({
     <NativeAgentProvider>
       <AudioDevicesProvider>
         <CamerasProvider>
-          <DashboardLayout>{children}</DashboardLayout>
+          <PeripheralsProvider><DashboardLayout>{children}</DashboardLayout></PeripheralsProvider>
         </CamerasProvider>
       </AudioDevicesProvider>
     </NativeAgentProvider>

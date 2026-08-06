@@ -19,3 +19,16 @@ export interface Profile {
   readonly preferences: ProfileDevicePreferences;
   readonly preset?: ProfilePreset;
 }
+
+export interface ProfileOperationResult {
+  readonly operation: string;
+  readonly status: "failed" | "success";
+  readonly error?: { readonly code: string; readonly message: string };
+}
+
+export interface ProfileApplicationResult {
+  readonly fullyApplied: boolean;
+  readonly operations: readonly ProfileOperationResult[];
+  readonly profileId: string;
+  readonly profiles: Profile[];
+}

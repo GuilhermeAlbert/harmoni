@@ -194,6 +194,24 @@ impl AudioDirection {
     }
 }
 
+impl AudioDevice {
+    pub(crate) fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub(crate) fn is_default(&self) -> bool {
+        self.is_default
+    }
+
+    pub(crate) fn is_input(&self) -> bool {
+        self.direction == AudioDirection::Input
+    }
+
+    pub(crate) fn is_output(&self) -> bool {
+        self.direction == AudioDirection::Output
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{

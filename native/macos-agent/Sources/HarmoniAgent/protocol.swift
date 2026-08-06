@@ -37,6 +37,7 @@ enum ResultPayload: Encodable {
     case audioMutation(AudioMutationResult)
     case cameras(CameraDiscoveryResult)
     case cameraMutation(CameraMutationResult)
+    case hidDevices(HidDiscoveryResult)
     case permissionStatus(PermissionStatusResult)
     case openSettings(OpenSettingsResult)
 
@@ -51,6 +52,8 @@ enum ResultPayload: Encodable {
         case let .cameras(result):
             try result.encode(to: encoder)
         case let .cameraMutation(result):
+            try result.encode(to: encoder)
+        case let .hidDevices(result):
             try result.encode(to: encoder)
         case let .permissionStatus(result):
             try result.encode(to: encoder)

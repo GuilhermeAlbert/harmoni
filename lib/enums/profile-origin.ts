@@ -1,4 +1,4 @@
 export enum ProfileOrigin {
-  Fixture = "fixture",
-  Session = "session",
+  Local = "local",
+  Seeded = "seeded",
 }

@@ -272,14 +272,14 @@ impl NativeAgentError {
         }
     }
 
-    fn not_found() -> Self {
+    pub(crate) fn not_found() -> Self {
         Self {
             code: NativeAgentErrorCode::NotFound,
             message: "The requested audio device was not found.",
         }
     }
 
-    fn unsupported() -> Self {
+    pub(crate) fn unsupported() -> Self {
         Self {
             code: NativeAgentErrorCode::Unsupported,
             message: "The requested audio control is unsupported.",

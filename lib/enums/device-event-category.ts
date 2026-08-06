@@ -5,5 +5,6 @@ export enum DeviceEventCategory {
   Camera = "camera",
   Keyboard = "keyboard",
   Mouse = "mouse",
+  Peripheral = "peripheral",
   Trackpad = "trackpad",
 }

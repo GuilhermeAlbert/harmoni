@@ -27,6 +27,7 @@ enum DeviceEventCategory {
     Camera,
     Keyboard,
     Mouse,
+    Peripheral,
     Trackpad,
 }
 
@@ -81,6 +82,10 @@ impl DeviceEvent {
 
     pub(crate) fn is_camera_change(&self) -> bool {
         matches!(self.category, DeviceEventCategory::Camera)
+            && matches!(self.change, DeviceEventChange::Changed)
+    }
+    pub(crate) fn is_peripheral_change(&self) -> bool {
+        matches!(self.category, DeviceEventCategory::Peripheral)
             && matches!(self.change, DeviceEventChange::Changed)
     }
 }

@@ -5,6 +5,7 @@ import type { PeripheralTransport } from "@/lib/enums/peripheral-transport";
 export interface Peripheral {
   readonly batteryPercent?: number;
   readonly canDisable: boolean;
+  readonly disableReason: string | null;
   readonly category: PeripheralCategory;
   readonly connection: PeripheralConnection;
   readonly enabled: boolean;
@@ -12,4 +13,11 @@ export interface Peripheral {
   readonly manufacturer: string;
   readonly name: string;
   readonly transport: PeripheralTransport;
+  readonly productId: number | null;
+  readonly vendorId: number | null;
+}
+
+export interface PeripheralDiscovery {
+  readonly inputMonitoring: string;
+  readonly peripherals: readonly Peripheral[];
 }

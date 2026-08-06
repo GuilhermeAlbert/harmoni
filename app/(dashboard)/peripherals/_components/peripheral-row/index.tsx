@@ -39,14 +39,14 @@ const TRANSPORT_MESSAGE_KEYS: Record<
   keyof PeripheralRowProps["messages"]["transports"]
 > = {
   [PeripheralTransport.Bluetooth]: "bluetooth",
+  [PeripheralTransport.BuiltIn]: "builtIn",
+  [PeripheralTransport.Unknown]: "unknown",
   [PeripheralTransport.Usb]: "usb",
-  [PeripheralTransport.UsbC]: "usbC",
   [PeripheralTransport.Wireless]: "wireless",
 };
 
 export function PeripheralRow({
   messages,
-  onToggle,
   peripheral,
 }: PeripheralRowProps): React.ReactNode {
   const connected =
@@ -57,7 +57,7 @@ export function PeripheralRow({
   const reason = !connected
     ? messages.disconnectedReason
     : !peripheral.canDisable
-      ? messages.unsupported
+      ? messages.disableReasons[peripheral.disableReason === "unsupported-by-macos" ? "unsupportedByMacOS" : "unknown"]
       : null;
 
   return (
@@ -72,7 +72,7 @@ export function PeripheralRow({
             <p className="mt-1 text-xs text-zinc-500">
               {messages.categories[CATEGORY_MESSAGE_KEYS[peripheral.category]]}
               {" · "}
-              {peripheral.manufacturer}
+            {peripheral.manufacturer || messages.unavailableMetadata}
               {" · "}
               {messages.transports[TRANSPORT_MESSAGE_KEYS[peripheral.transport]]}
               {peripheral.batteryPercent === undefined
@@ -102,7 +102,7 @@ export function PeripheralRow({
             aria-describedby={reason ? reasonId : undefined}
             checked={peripheral.enabled}
             disabled={!controllable}
-            onCheckedChange={(enabled) => onToggle(peripheral.id, enabled)}
+            onCheckedChange={() => undefined}
           />
         </div>
       </article>

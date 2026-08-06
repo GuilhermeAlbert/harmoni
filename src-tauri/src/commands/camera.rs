@@ -78,6 +78,22 @@ pub(crate) struct CameraPreference {
     preferred_camera_id: Option<String>,
 }
 
+impl CameraDiscovery {
+    pub(crate) fn cameras(&self) -> &[CameraDevice] {
+        &self.cameras
+    }
+}
+
+impl CameraDevice {
+    pub(crate) fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub(crate) fn preferred(&self) -> bool {
+        self.preferred
+    }
+}
+
 #[derive(Deserialize)]
 struct CameraMutationResult {
     camera: CameraDevice,

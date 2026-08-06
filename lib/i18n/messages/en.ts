@@ -48,11 +48,11 @@ export const EN_MESSAGES = {
       "This route is ready for its focused product specification.",
   },
   overview: {
-    fixtureLabel: "Live audio and cameras · simulated peripherals",
+    fixtureLabel: "Live system data",
     eyebrow: "System overview",
     title: "Everything connected. Nothing out of tune.",
     description:
-      "Review audio and camera devices discovered by macOS alongside the remaining peripheral demonstration.",
+      "Review audio, camera, and peripheral devices discovered directly from macOS.",
     privacyMode: "Privacy mode",
     applyWorkProfile: "Apply Work profile",
     refresh: "Refresh devices",
@@ -99,6 +99,7 @@ export const EN_MESSAGES = {
         camera: "Camera",
         keyboard: "Keyboard",
         mouse: "Mouse",
+        peripheral: "Peripheral",
         trackpad: "Trackpad",
       },
       battery: "battery",
@@ -249,11 +250,19 @@ export const EN_MESSAGES = {
     },
   },
   peripherals: {
+    realDataLabel: "Live data from macOS",
     fixtureLabel: "Simulated fixture data",
     eyebrow: "Peripheral workspace",
     title: "Every peripheral, clearly accounted for.",
     description:
-      "Review HID-style fixture devices and demonstrate enablement only where the declared capability permits it.",
+      "Review keyboards, mice, controllers, and other HID devices reported by macOS.",
+    refresh: "Refresh peripherals",
+    refreshing: "Refreshing peripherals",
+    inputMonitoring: "Input Monitoring",
+    inputMonitoringAuthorized: "Authorized",
+    inputMonitoringGuidance: "Not authorized. Device metadata may be limited; enable Input Monitoring in System Settings if needed.",
+    unavailableMetadata: "Manufacturer unavailable",
+    disableReasons: { unsupportedByMacOS: "macOS does not provide a safe public API to disable this device.", unknown: "Disable is unavailable for this device." },
     stateLabel: "Fixture state",
     stateHint: "Choose a state to preview this route.",
     states: {
@@ -263,7 +272,7 @@ export const EN_MESSAGES = {
       error: "Error",
     },
     listTitle: "Connected peripherals",
-    listDescription: "Keyboard, mouse, trackpad, and other fixture devices.",
+    listDescription: "Keyboard, mouse, trackpad, and other devices reported by IOHIDManager.",
     categories: {
       gameController: "Game controller",
       keyboard: "Keyboard",
@@ -272,6 +281,8 @@ export const EN_MESSAGES = {
       trackpad: "Trackpad",
     },
     transports: {
+      builtIn: "Built-in",
+      unknown: "Unknown",
       bluetooth: "Bluetooth",
       usb: "USB",
       usbC: "USB-C",
@@ -286,11 +297,11 @@ export const EN_MESSAGES = {
     disable: "Disable peripheral",
     unsupported: "macOS disable control is not declared for this fixture device.",
     disconnectedReason: "The device must be connected before it can be controlled.",
-    loading: "Loading simulated peripherals",
-    emptyTitle: "No peripheral fixture devices",
+    loading: "Reading peripherals from macOS",
+    emptyTitle: "No peripherals found",
     emptyDescription:
       "This demonstrates the peripherals route when discovery returns no devices.",
-    errorTitle: "Peripheral fixture discovery failed",
+    errorTitle: "Peripheral discovery unavailable",
     errorDescription:
       "This simulated error remains visible and does not fall back to hidden data.",
     retry: "Try fixture again",
@@ -300,18 +311,23 @@ export const EN_MESSAGES = {
     },
   },
   profiles: {
-    fixtureLabel: "Simulated fixture data",
     eyebrow: "Profile workspace",
     title: "Switch the whole setup at once.",
     description:
-      "Apply fixture profiles or create a session-only setup with explicit device preferences.",
-    sessionOnly: "Changes last only for this session and reset when the app reloads.",
+      "Save local setups and apply supported device preferences in one ordered operation.",
+    sessionOnly: "Profiles are stored only on this Mac. Unsupported privacy changes are reported explicitly.",
+    loading: "Loading local profiles",
     createProfile: "Create profile",
     active: "Current profile",
     profile: "Profile",
     sessionProfile: "Session profile",
     apply: "Apply profile",
     edit: "Edit profile",
+    applying: "Applying profile",
+    outcome: "Application result",
+    succeeded: "Applied",
+    failed: "Failed",
+    operations: { "audio-input": "Audio input", "audio-output": "Audio output", "input-volume": "Input volume", "microphone-mute": "Microphone mute", "camera-preference": "Camera preference", "camera-privacy": "Camera privacy" },
     presets: {
       work: {
         name: "Work",
@@ -339,7 +355,7 @@ export const EN_MESSAGES = {
     form: {
       createTitle: "Create a profile",
       editTitle: "Edit profile",
-      description: "Define the desired local fixture setup.",
+      description: "Define the desired local device setup.",
       name: "Profile name",
       namePlaceholder: "Focus",
       profileDescription: "Description",
@@ -352,7 +368,7 @@ export const EN_MESSAGES = {
       cameraEnabled: "Enable camera",
       create: "Create profile",
       update: "Save changes",
-      saving: "Saving simulated profile",
+      saving: "Saving profile",
       cancel: "Cancel",
       validation: {
         nameRequired: "Enter a profile name.",
@@ -365,9 +381,12 @@ export const EN_MESSAGES = {
       },
     },
     feedback: {
-      applied: "Profile applied only in this simulation.",
-      created: "Session-only profile created.",
-      updated: "Session-only profile updated.",
+      applied: "Profile fully applied.",
+      partial: "Profile partially applied. Review each operation below.",
+      applyFailed: "The profile could not be applied.",
+      loadFailed: "Local profiles could not be loaded. Existing storage was left unchanged.",
+      created: "Local profile created.",
+      updated: "Local profile updated.",
     },
   },
   nativeAgent: {
@@ -395,6 +414,7 @@ export const EN_MESSAGES = {
       error: "The development event could not be received.",
       categories: {
         audio: "Audio",
+        peripheral: "Peripheral",
         "audio-input": "Audio input",
         "audio-output": "Audio output",
         camera: "Camera",

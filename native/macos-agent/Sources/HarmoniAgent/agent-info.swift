@@ -122,6 +122,14 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         }
     }
 
+    if request.method == "hid.devices" {
+        return .response(.result(id: request.id, value: .hidDevices(discoverHidDevices())))
+    }
+
+    if request.method == "hid.watchDeviceEvents" {
+        watchHidDeviceEvents()
+    }
+
     guard request.method == "agent.info" else {
         return .response(makeErrorResponse(
             id: request.id,

@@ -1,6 +1,7 @@
 export enum PeripheralTransport {
   Bluetooth = "bluetooth",
+  BuiltIn = "built-in",
+  Unknown = "unknown",
   Usb = "usb",
-  UsbC = "usb-c",
   Wireless = "wireless",
 }

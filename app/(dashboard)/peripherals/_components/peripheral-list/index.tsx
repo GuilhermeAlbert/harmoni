@@ -4,7 +4,6 @@ import { Panel } from "@/components/panel";
 
 export function PeripheralList({
   messages,
-  onToggle,
   peripherals,
 }: PeripheralListProps): React.ReactNode {
   return (
@@ -18,7 +17,6 @@ export function PeripheralList({
           <PeripheralRow
             key={peripheral.id}
             messages={messages}
-            onToggle={onToggle}
             peripheral={peripheral}
           />
         ))}

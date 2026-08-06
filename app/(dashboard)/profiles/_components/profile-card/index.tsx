@@ -14,6 +14,8 @@ export function ProfileCard({
   messages,
   onApply,
   onEdit,
+  outcome,
+  pending,
   profile,
 }: ProfileCardProps): React.ReactNode {
   const { devices: audioDevices } = useAudioDevices();
@@ -43,7 +45,7 @@ export function ProfileCard({
           {profile.active ? messages.active : messages.profile}
         </p>
         <div className="flex flex-wrap gap-2">
-          {profile.origin === ProfileOrigin.Session ? (
+          {profile.origin === ProfileOrigin.Local ? (
             <Badge>{messages.sessionProfile}</Badge>
           ) : null}
           {profile.active ? (
@@ -99,14 +101,26 @@ export function ProfileCard({
         </span>
       </div>
 
+      {outcome ? (
+        <ul className="mt-4 grid gap-1 border-t border-zinc-200 pt-4 text-xs dark:border-white/[0.08]" aria-label={messages.outcome}>
+          {outcome.operations.map((operation) => (
+            <li className={operation.status === "success" ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"} key={operation.operation}>
+              {messages.operations[operation.operation as keyof typeof messages.operations] ?? operation.operation}: {operation.status === "success" ? messages.succeeded : operation.error?.message ?? messages.failed}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       <div className="mt-auto flex flex-wrap gap-2 pt-5">
-        <Button
-          disabled={profile.active}
-          onClick={() => onApply(profile.id)}
-          size={ButtonSize.Small}
-        >
-          {profile.active ? messages.active : messages.apply}
-        </Button>
+        {pending ? (
+          <Button loading={true} loadingLabel={messages.applying} size={ButtonSize.Small}>
+            {messages.applying}
+          </Button>
+        ) : (
+          <Button disabled={profile.active} onClick={() => void onApply(profile.id)} size={ButtonSize.Small}>
+            {profile.active ? messages.active : messages.apply}
+          </Button>
+        )}
         <Button
           onClick={() => onEdit(profile.id)}
           size={ButtonSize.Small}

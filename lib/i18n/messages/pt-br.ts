@@ -51,11 +51,11 @@ export const PT_BR_MESSAGES = {
       "Esta rota está pronta para sua especificação de produto dedicada.",
   },
   overview: {
-    fixtureLabel: "Áudio e câmeras ao vivo · periféricos simulados",
+    fixtureLabel: "Dados do sistema ao vivo",
     eyebrow: "Visão geral do sistema",
     title: "Tudo conectado. Nada fora de sintonia.",
     description:
-      "Revise dispositivos de áudio e câmeras descobertos pelo macOS junto à demonstração restante de periféricos.",
+      "Revise dispositivos de áudio, câmeras e periféricos descobertos diretamente pelo macOS.",
     privacyMode: "Modo de privacidade",
     applyWorkProfile: "Aplicar perfil Trabalho",
     refresh: "Atualizar dispositivos",
@@ -102,6 +102,7 @@ export const PT_BR_MESSAGES = {
         camera: "Câmera",
         keyboard: "Teclado",
         mouse: "Mouse",
+        peripheral: "Periférico",
         trackpad: "Trackpad",
       },
       battery: "de bateria",
@@ -252,11 +253,19 @@ export const PT_BR_MESSAGES = {
     },
   },
   peripherals: {
+    realDataLabel: "Dados ao vivo do macOS",
     fixtureLabel: "Dados simulados de fixture",
     eyebrow: "Área de periféricos",
     title: "Cada periférico, claramente identificado.",
     description:
-      "Revise dispositivos HID da fixture e demonstre ativação somente quando a capacidade declarada permitir.",
+      "Revise teclados, mouses, controles e outros dispositivos HID informados pelo macOS.",
+    refresh: "Atualizar periféricos",
+    refreshing: "Atualizando periféricos",
+    inputMonitoring: "Monitoramento de Entrada",
+    inputMonitoringAuthorized: "Autorizado",
+    inputMonitoringGuidance: "Não autorizado. Os metadados podem ser limitados; ative o Monitoramento de Entrada nos Ajustes do Sistema se necessário.",
+    unavailableMetadata: "Fabricante indisponível",
+    disableReasons: { unsupportedByMacOS: "O macOS não oferece uma API pública segura para desativar este dispositivo.", unknown: "A desativação está indisponível para este dispositivo." },
     stateLabel: "Estado da fixture",
     stateHint: "Escolha um estado para visualizar esta rota.",
     states: {
@@ -266,7 +275,7 @@ export const PT_BR_MESSAGES = {
       error: "Erro",
     },
     listTitle: "Periféricos conectados",
-    listDescription: "Teclados, mouses, trackpads e outros dispositivos da fixture.",
+    listDescription: "Teclados, mouses, trackpads e outros dispositivos informados pelo IOHIDManager.",
     categories: {
       gameController: "Controle de jogo",
       keyboard: "Teclado",
@@ -275,6 +284,8 @@ export const PT_BR_MESSAGES = {
       trackpad: "Trackpad",
     },
     transports: {
+      builtIn: "Integrado",
+      unknown: "Desconhecido",
       bluetooth: "Bluetooth",
       usb: "USB",
       usbC: "USB-C",
@@ -289,11 +300,11 @@ export const PT_BR_MESSAGES = {
     disable: "Desativar periférico",
     unsupported: "O controle de desativação do macOS não está declarado para este dispositivo da fixture.",
     disconnectedReason: "O dispositivo precisa estar conectado para ser controlado.",
-    loading: "Carregando periféricos simulados",
-    emptyTitle: "Nenhum periférico na fixture",
+    loading: "Lendo periféricos do macOS",
+    emptyTitle: "Nenhum periférico encontrado",
     emptyDescription:
       "Isto demonstra a rota de periféricos quando a descoberta não retorna dispositivos.",
-    errorTitle: "Falha na descoberta da fixture de periféricos",
+    errorTitle: "Descoberta de periféricos indisponível",
     errorDescription:
       "Este erro simulado permanece visível e não recorre a dados ocultos.",
     retry: "Tentar a fixture novamente",
@@ -303,18 +314,23 @@ export const PT_BR_MESSAGES = {
     },
   },
   profiles: {
-    fixtureLabel: "Dados simulados de fixture",
     eyebrow: "Área de perfis",
     title: "Alterne toda a configuração de uma vez.",
     description:
-      "Aplique perfis da fixture ou crie uma configuração válida somente nesta sessão com preferências explícitas.",
-    sessionOnly: "As alterações duram somente nesta sessão e são redefinidas quando o aplicativo recarrega.",
+      "Salve configurações locais e aplique preferências compatíveis em uma operação ordenada.",
+    sessionOnly: "Os perfis ficam somente neste Mac. Alterações de privacidade sem suporte são informadas explicitamente.",
+    loading: "Carregando perfis locais",
     createProfile: "Criar perfil",
     active: "Perfil atual",
     profile: "Perfil",
     sessionProfile: "Perfil da sessão",
     apply: "Aplicar perfil",
     edit: "Editar perfil",
+    applying: "Aplicando perfil",
+    outcome: "Resultado da aplicação",
+    succeeded: "Aplicado",
+    failed: "Falhou",
+    operations: { "audio-input": "Entrada de áudio", "audio-output": "Saída de áudio", "input-volume": "Volume de entrada", "microphone-mute": "Silêncio do microfone", "camera-preference": "Preferência de câmera", "camera-privacy": "Privacidade da câmera" },
     presets: {
       work: {
         name: "Trabalho",
@@ -342,7 +358,7 @@ export const PT_BR_MESSAGES = {
     form: {
       createTitle: "Criar um perfil",
       editTitle: "Editar perfil",
-      description: "Defina a configuração desejada para a fixture local.",
+      description: "Defina a configuração local desejada para os dispositivos.",
       name: "Nome do perfil",
       namePlaceholder: "Foco",
       profileDescription: "Descrição",
@@ -355,7 +371,7 @@ export const PT_BR_MESSAGES = {
       cameraEnabled: "Ativar câmera",
       create: "Criar perfil",
       update: "Salvar alterações",
-      saving: "Salvando perfil simulado",
+      saving: "Salvando perfil",
       cancel: "Cancelar",
       validation: {
         nameRequired: "Informe o nome do perfil.",
@@ -368,9 +384,12 @@ export const PT_BR_MESSAGES = {
       },
     },
     feedback: {
-      applied: "Perfil aplicado somente nesta simulação.",
-      created: "Perfil válido somente nesta sessão criado.",
-      updated: "Perfil válido somente nesta sessão atualizado.",
+      applied: "Perfil aplicado por completo.",
+      partial: "Perfil aplicado parcialmente. Revise cada operação abaixo.",
+      applyFailed: "Não foi possível aplicar o perfil.",
+      loadFailed: "Não foi possível carregar os perfis locais. O armazenamento existente não foi alterado.",
+      created: "Perfil local criado.",
+      updated: "Perfil local atualizado.",
     },
   },
   nativeAgent: {
@@ -398,6 +417,7 @@ export const PT_BR_MESSAGES = {
       error: "Não foi possível receber o evento de desenvolvimento.",
       categories: {
         audio: "Áudio",
+        peripheral: "Periférico",
         "audio-input": "Entrada de áudio",
         "audio-output": "Saída de áudio",
         camera: "Câmera",
