@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Minimum core capability for the Harmoni main window.",
+  "description": "Core capability for the main window; native health is exposed only through its registered app command.",
   "windows": ["main"],
   "permissions": ["core:default"]
 }
