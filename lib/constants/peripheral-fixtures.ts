@@ -1,0 +1,71 @@
+import { PeripheralCategory } from "@/lib/enums/peripheral-category";
+import { PeripheralConnection } from "@/lib/enums/peripheral-connection";
+import { PeripheralTransport } from "@/lib/enums/peripheral-transport";
+import type { Peripheral } from "@/lib/types/peripheral";
+
+export const PERIPHERAL_FIXTURES = [
+  {
+    batteryPercent: 82,
+    canDisable: true,
+    category: PeripheralCategory.Keyboard,
+    connection: PeripheralConnection.Connected,
+    enabled: true,
+    id: "mx-mechanical",
+    manufacturer: "Logitech",
+    name: "MX Mechanical",
+    transport: PeripheralTransport.Bluetooth,
+  },
+  {
+    batteryPercent: 68,
+    canDisable: true,
+    category: PeripheralCategory.Mouse,
+    connection: PeripheralConnection.Connected,
+    enabled: true,
+    id: "mx-master-3s",
+    manufacturer: "Logitech",
+    name: "MX Master 3S",
+    transport: PeripheralTransport.Bluetooth,
+  },
+  {
+    batteryPercent: 91,
+    canDisable: false,
+    category: PeripheralCategory.Trackpad,
+    connection: PeripheralConnection.Connected,
+    enabled: true,
+    id: "magic-trackpad",
+    manufacturer: "Apple",
+    name: "Magic Trackpad",
+    transport: PeripheralTransport.Bluetooth,
+  },
+  {
+    canDisable: true,
+    category: PeripheralCategory.Keyboard,
+    connection: PeripheralConnection.Connected,
+    enabled: true,
+    id: "keychron-q1",
+    manufacturer: "Keychron",
+    name: "Keychron Q1",
+    transport: PeripheralTransport.UsbC,
+  },
+  {
+    batteryPercent: 54,
+    canDisable: false,
+    category: PeripheralCategory.GameController,
+    connection: PeripheralConnection.Disconnected,
+    enabled: false,
+    id: "wireless-controller",
+    manufacturer: "Generic",
+    name: "Wireless Controller",
+    transport: PeripheralTransport.Wireless,
+  },
+  {
+    canDisable: false,
+    category: PeripheralCategory.Other,
+    connection: PeripheralConnection.Connected,
+    enabled: true,
+    id: "usb-security-key",
+    manufacturer: "Yubico",
+    name: "Security Key",
+    transport: PeripheralTransport.Usb,
+  },
+] as const satisfies readonly Peripheral[];

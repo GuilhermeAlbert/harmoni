@@ -1,7 +1,5 @@
-import { PagePlaceholder } from "../_components/page-placeholder";
-import { DashboardPath } from "@/lib/enums/dashboard-path";
+import { CameraScreen } from "./_components/camera-screen";
 
 export default function CamerasPage(): React.ReactNode {
-  return <PagePlaceholder path={DashboardPath.Cameras} />;
+  return <CameraScreen />;
 }
-

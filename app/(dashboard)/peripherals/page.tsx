@@ -1,7 +1,5 @@
-import { PagePlaceholder } from "../_components/page-placeholder";
-import { DashboardPath } from "@/lib/enums/dashboard-path";
+import { PeripheralScreen } from "./_components/peripheral-screen";
 
 export default function PeripheralsPage(): React.ReactNode {
-  return <PagePlaceholder path={DashboardPath.Peripherals} />;
+  return <PeripheralScreen />;
 }
-
