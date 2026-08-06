@@ -1,7 +1,5 @@
-import { PagePlaceholder } from "../_components/page-placeholder";
-import { DashboardPath } from "@/lib/enums/dashboard-path";
+import { ProfileScreen } from "./_components/profile-screen";
 
 export default function ProfilesPage(): React.ReactNode {
-  return <PagePlaceholder path={DashboardPath.Profiles} />;
+  return <ProfileScreen />;
 }
-
