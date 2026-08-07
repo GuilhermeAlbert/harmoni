@@ -10,6 +10,7 @@ import { BadgeTone } from "@/components/badge/enums";
 import { Button } from "@/components/button";
 import { ButtonSize, ButtonVariant } from "@/components/button/enums";
 import { EmptyState } from "@/components/empty-state";
+import { DevicePicker } from "@/components/device-picker";
 import { Panel } from "@/components/panel";
 import { Spinner } from "@/components/spinner";
 import { useCameras } from "@/contexts/cameras/use-cameras";
@@ -41,7 +42,7 @@ export function CameraScreen(): React.ReactNode {
   const feedback = pending
     ? cameraMessages.feedback.pending
     : mutation?.status === CameraMutationStatus.Error
-      ? cameraMessages.feedback.failure
+      ? mutation.message ?? cameraMessages.feedback.failure
       : mutation?.action === CameraAction.Preference
         ? cameraMessages.feedback.preferenceSaved
         : mutation
@@ -112,7 +113,7 @@ export function CameraScreen(): React.ReactNode {
           </Panel>
         ) : null}
 
-        {state === CameraDiscoveryState.Error ? (
+        {state === CameraDiscoveryState.Error || state === CameraDiscoveryState.Degraded ? (
           <Panel className="mt-4" role="alert">
             <EmptyState
               action={<Button onClick={refresh} size={ButtonSize.Small} variant={ButtonVariant.Secondary}>{cameraMessages.retry}</Button>}
@@ -123,7 +124,27 @@ export function CameraScreen(): React.ReactNode {
           </Panel>
         ) : null}
 
-        {state === CameraDiscoveryState.Ready && preferredCamera ? (
+        {(state === CameraDiscoveryState.Ready || state === CameraDiscoveryState.Degraded) && cameras.length ? (
+          <Panel className="mt-4 p-5">
+            <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{cameraMessages.preferredPickerLabel}</p>
+            <div className="mt-2">
+              <DevicePicker
+                disabled={pending?.action === CameraAction.Preference}
+                label={cameraMessages.preferredPickerLabel}
+                onChange={(cameraId) => {
+                  const selected = cameras.find((camera) => camera.id === cameraId);
+                  if (selected) void setPreferred(selected);
+                }}
+                options={cameras.map((camera) => ({ label: camera.name, value: camera.id }))}
+                placeholder={cameraMessages.choosePreferredCamera}
+                value={cameras.some((camera) => camera.id === preferredCameraId) ? preferredCameraId ?? "" : ""}
+              />
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">{cameraMessages.preferredPickerHint}</p>
+          </Panel>
+        ) : null}
+
+        {(state === CameraDiscoveryState.Ready || state === CameraDiscoveryState.Degraded) && preferredCamera ? (
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
             <CameraList
               cameras={cameras}

@@ -25,5 +25,6 @@ export interface CameraPendingAction {
 }
 
 export interface CameraMutation extends CameraPendingAction {
+  message?: string;
   status: CameraMutationStatus;
 }

@@ -109,15 +109,15 @@ func watchCameraDeviceEvents() -> Never {
         forName: .AVCaptureDeviceWasConnected,
         object: nil,
         queue: nil
-    ) { _ in
-        writeCameraDeviceChangeEvent()
+    ) { notification in
+        writeCameraDeviceChangeEvent(notification: notification, change: "connected")
     }
     let disconnected = center.addObserver(
         forName: .AVCaptureDeviceWasDisconnected,
         object: nil,
         queue: nil
-    ) { _ in
-        writeCameraDeviceChangeEvent()
+    ) { notification in
+        writeCameraDeviceChangeEvent(notification: notification, change: "disconnected")
     }
     _ = (connected, disconnected)
 
@@ -186,14 +186,15 @@ private func cameraFormats(_ device: AVCaptureDevice) -> [DiscoveredCameraFormat
     }
 }
 
-private func writeCameraDeviceChangeEvent() {
+private func writeCameraDeviceChangeEvent(notification: Notification, change: String) {
+    let uniqueID = (notification.object as? AVCaptureDevice)?.uniqueID ?? "inventory"
     let envelope = DeviceEventEnvelope(
         kind: "device-change",
         version: PROTOCOL_VERSION,
         event: DeviceEvent(
-            id: "camera.devices",
+            id: stableDeviceEventID(prefix: "camera", value: uniqueID),
             category: "camera",
-            change: "changed",
+            change: change,
             occurredAt: ISO8601DateFormatter().string(from: Date())
         )
     )

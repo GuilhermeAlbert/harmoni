@@ -108,7 +108,7 @@ export function AudioScreen(): React.ReactNode {
           </Panel>
         ) : null}
 
-        {state === AudioDiscoveryState.Error ? (
+        {state === AudioDiscoveryState.Error || state === AudioDiscoveryState.Degraded ? (
           <Panel className="mt-4" role="alert">
             <EmptyState
               action={
@@ -127,7 +127,7 @@ export function AudioScreen(): React.ReactNode {
           </Panel>
         ) : null}
 
-        {state === AudioDiscoveryState.Ready && devices.length > 0 ? (
+        {(state === AudioDiscoveryState.Ready || state === AudioDiscoveryState.Degraded) && devices.length > 0 ? (
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
             <AudioDeviceSection
               description={audioMessages.inputsDescription}

@@ -21,5 +21,6 @@ export interface AudioPendingMutation {
 }
 
 export interface AudioMutationState extends AudioPendingMutation {
+  message?: string;
   status: AudioMutationStatus;
 }

@@ -15,7 +15,7 @@ export function PeripheralScreen(): React.ReactNode {
     <p aria-live="polite" className="mt-5 min-h-5 text-sm" role="status">{refreshing ? m.refreshing : ""}</p>
     {state === PeripheralDiscoveryState.Loading ? <Panel className="mt-4 grid min-h-80 place-items-center"><Spinner label={m.loading} /></Panel> : null}
     {state === PeripheralDiscoveryState.Ready && !peripherals.length ? <Panel className="mt-4"><EmptyState description={m.emptyDescription} icon={Unplug} title={m.emptyTitle} /></Panel> : null}
-    {state === PeripheralDiscoveryState.Error ? <Panel className="mt-4" role="alert"><EmptyState action={<Button onClick={refresh} size={ButtonSize.Small}>{m.retry}</Button>} description={m.errorDescription} icon={AlertTriangle} title={m.errorTitle} /></Panel> : null}
-    {state === PeripheralDiscoveryState.Ready && peripherals.length ? <div className="mt-4"><PeripheralList messages={m} peripherals={peripherals} /></div> : null}
+    {state === PeripheralDiscoveryState.Error || state === PeripheralDiscoveryState.Degraded ? <Panel className="mt-4" role="alert"><EmptyState action={<Button onClick={refresh} size={ButtonSize.Small}>{m.retry}</Button>} description={m.errorDescription} icon={AlertTriangle} title={m.errorTitle} /></Panel> : null}
+    {(state === PeripheralDiscoveryState.Ready || state === PeripheralDiscoveryState.Degraded) && peripherals.length ? <div className="mt-4"><PeripheralList messages={m} peripherals={peripherals} /></div> : null}
   </div></main>;
 }

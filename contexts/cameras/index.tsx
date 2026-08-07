@@ -1,7 +1,7 @@
 "use client";
 
 import type { PropsWithChildren } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CamerasContext } from "./context";
 import { CameraDiscoveryState } from "@/lib/enums/camera-discovery-state";
@@ -16,6 +16,7 @@ import {
   setPreferredCamera,
 } from "@/lib/services/cameras";
 import { subscribeToDeviceEvents } from "@/lib/services/device-events";
+import { createNativeAgentError } from "@/lib/services/native-agent";
 import type { CameraAuthorization } from "@/lib/enums/camera-authorization";
 import type { Camera } from "@/lib/types/camera";
 import type { CameraMutation, CameraPendingAction } from "./types";
@@ -29,22 +30,26 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
   const [preferredCameraId, setPreferredCameraId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [state, setState] = useState(CameraDiscoveryState.Loading);
+  const camerasRef = useRef<readonly Camera[]>([]);
+  const refreshSequence = useRef(0);
 
   useEffect(() => {
     let active = true;
+    const sequence = ++refreshSequence.current;
     getCameras()
       .then((discovery) => {
-        if (!active) return;
+        if (!active || sequence !== refreshSequence.current) return;
         setAuthorization(discovery.authorization);
+        camerasRef.current = discovery.cameras;
         setCameras(discovery.cameras);
         setPreferredCameraId(discovery.preferredCameraId);
         setRefreshing(false);
         setState(CameraDiscoveryState.Ready);
       })
       .catch(() => {
-        if (!active) return;
+        if (!active || sequence !== refreshSequence.current) return;
         setRefreshing(false);
-        setState(CameraDiscoveryState.Error);
+        setState(camerasRef.current.length ? CameraDiscoveryState.Degraded : CameraDiscoveryState.Error);
       });
     return () => {
       active = false;
@@ -54,10 +59,14 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
   useEffect(() => {
     let active = true;
     let unsubscribe: (() => void) | undefined;
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     subscribeToDeviceEvents((event) => {
       if (active && event.category === DeviceEventCategory.Camera) {
         setRefreshing(true);
-        setAttempt((current) => current + 1);
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+          if (active) setAttempt((current) => current + 1);
+        }, 150);
       }
     })
       .then((nextUnsubscribe) => {
@@ -65,10 +74,11 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
         else nextUnsubscribe();
       })
       .catch(() => {
-        if (active) setState(CameraDiscoveryState.Error);
+        if (active) setState(camerasRef.current.length ? CameraDiscoveryState.Degraded : CameraDiscoveryState.Error);
       });
     return () => {
       active = false;
+      clearTimeout(refreshTimer);
       unsubscribe?.();
     };
   }, []);
@@ -91,9 +101,15 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
     try {
       await operation();
       setMutation({ ...target, status: CameraMutationStatus.Success });
-    } catch {
+    } catch (cause: unknown) {
       setCameras(previous);
-      setMutation({ ...target, status: CameraMutationStatus.Error });
+      setMutation({
+        ...target,
+        message: createNativeAgentError(cause).message,
+        status: CameraMutationStatus.Error,
+      });
+      setRefreshing(true);
+      setAttempt((current) => current + 1);
     } finally {
       setPending(null);
     }

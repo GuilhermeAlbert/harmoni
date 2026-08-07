@@ -1,7 +1,7 @@
 "use client";
 
 import type { PropsWithChildren } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AudioDevicesContext } from "./context";
 import { AudioDiscoveryState } from "@/lib/enums/audio-discovery-state";
@@ -15,6 +15,7 @@ import {
   setDefaultAudioDevice,
 } from "@/lib/services/audio-devices";
 import { subscribeToDeviceEvents } from "@/lib/services/device-events";
+import { createNativeAgentError } from "@/lib/services/native-agent";
 import type { AudioDevice } from "@/lib/types/audio-device";
 import type {
   AudioMutationState,
@@ -30,27 +31,31 @@ export function AudioDevicesProvider({
   const [state, setState] = useState(AudioDiscoveryState.Loading);
   const [mutation, setMutation] = useState<AudioMutationState | null>(null);
   const [pending, setPending] = useState<AudioPendingMutation | null>(null);
+  const devicesRef = useRef<readonly AudioDevice[]>([]);
+  const refreshSequence = useRef(0);
 
   useEffect(() => {
     let active = true;
 
+    const sequence = ++refreshSequence.current;
     getAudioDevices()
       .then((nextDevices) => {
-        if (!active) {
+        if (!active || sequence !== refreshSequence.current) {
           return;
         }
 
+        devicesRef.current = nextDevices;
         setDevices(nextDevices);
         setRefreshing(false);
         setState(AudioDiscoveryState.Ready);
       })
       .catch(() => {
-        if (!active) {
+        if (!active || sequence !== refreshSequence.current) {
           return;
         }
 
         setRefreshing(false);
-        setState(AudioDiscoveryState.Error);
+        setState(devicesRef.current.length ? AudioDiscoveryState.Degraded : AudioDiscoveryState.Error);
       });
 
     return () => {
@@ -61,11 +66,15 @@ export function AudioDevicesProvider({
   useEffect(() => {
     let active = true;
     let unsubscribe: (() => void) | undefined;
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
     subscribeToDeviceEvents((event) => {
-      if (active && event.category === DeviceEventCategory.Audio) {
+      if (active && [DeviceEventCategory.Audio, DeviceEventCategory.AudioInput, DeviceEventCategory.AudioOutput].includes(event.category)) {
         setRefreshing(true);
-        setAttempt((currentAttempt) => currentAttempt + 1);
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+          if (active) setAttempt((currentAttempt) => currentAttempt + 1);
+        }, 150);
       }
     })
       .then((nextUnsubscribe) => {
@@ -77,12 +86,13 @@ export function AudioDevicesProvider({
       })
       .catch(() => {
         if (active) {
-          setState(AudioDiscoveryState.Error);
+          setState(devicesRef.current.length ? AudioDiscoveryState.Degraded : AudioDiscoveryState.Error);
         }
       });
 
     return () => {
       active = false;
+      clearTimeout(refreshTimer);
       unsubscribe?.();
     };
   }, []);
@@ -110,9 +120,15 @@ export function AudioDevicesProvider({
         ),
       );
       setMutation({ ...target, status: AudioMutationStatus.Success });
-    } catch {
+    } catch (cause: unknown) {
       setDevices(previousDevices);
-      setMutation({ ...target, status: AudioMutationStatus.Error });
+      setMutation({
+        ...target,
+        message: createNativeAgentError(cause).message,
+        status: AudioMutationStatus.Error,
+      });
+      setRefreshing(true);
+      setAttempt((currentAttempt) => currentAttempt + 1);
     } finally {
       setPending(null);
     }

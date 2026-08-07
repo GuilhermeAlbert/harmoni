@@ -76,6 +76,14 @@ struct DeviceEvent: Encodable {
     let occurredAt: String
 }
 
+func stableDeviceEventID(prefix: String, value: String) -> String {
+    var hash: UInt64 = 14_695_981_039_346_656_037
+    for byte in value.utf8 {
+        hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211
+    }
+    return "\(prefix).\(String(hash, radix: 16))"
+}
+
 enum AgentOutput: Encodable {
     case response(ResponseEnvelope)
     case deviceEvent(DeviceEventEnvelope)

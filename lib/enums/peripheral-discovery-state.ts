@@ -1,1 +1,1 @@
-export enum PeripheralDiscoveryState { Error = "error", Loading = "loading", Ready = "ready" }
+export enum PeripheralDiscoveryState { Degraded = "degraded", Error = "error", Loading = "loading", Ready = "ready" }

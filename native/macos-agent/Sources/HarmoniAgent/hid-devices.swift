@@ -37,8 +37,12 @@ func discoverHidDevices() -> HidDiscoveryResult {
 func watchHidDeviceEvents() -> Never {
     let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
     IOHIDManagerSetDeviceMatching(manager, nil)
-    IOHIDManagerRegisterDeviceMatchingCallback(manager, { _, _, _, _ in writeHidChangeEvent() }, nil)
-    IOHIDManagerRegisterDeviceRemovalCallback(manager, { _, _, _, _ in writeHidChangeEvent() }, nil)
+    IOHIDManagerRegisterDeviceMatchingCallback(manager, { _, _, _, device in
+        writeHidChangeEvent(device: device, change: "connected")
+    }, nil)
+    IOHIDManagerRegisterDeviceRemovalCallback(manager, { _, _, _, device in
+        writeHidChangeEvent(device: device, change: "disconnected")
+    }, nil)
     IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetCurrent(), CFRunLoopMode.defaultMode.rawValue)
     IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
     CFRunLoopRun()
@@ -97,9 +101,15 @@ private func fnv1a(_ value: String) -> String {
     return String(hash, radix: 16)
 }
 
-private func writeHidChangeEvent() {
+private func writeHidChangeEvent(device: IOHIDDevice, change: String) {
+    let peripheral = makePeripheral(device)
+    let category = peripheral?.category ?? "other"
+    let eventCategory = ["keyboard", "mouse", "trackpad"].contains(category)
+        ? category
+        : "peripheral"
+    let eventID = peripheral?.id ?? stableDeviceEventID(prefix: "hid", value: "unknown")
     let envelope = DeviceEventEnvelope(kind: "device-change", version: PROTOCOL_VERSION, event: DeviceEvent(
-        id: "hid.devices", category: "peripheral", change: "changed",
+        id: eventID, category: eventCategory, change: change,
         occurredAt: ISO8601DateFormatter().string(from: Date())
     ))
     let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]

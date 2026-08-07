@@ -32,11 +32,15 @@ enum DeviceEventCategory {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "kebab-case")]
 enum DeviceEventChange {
     Changed,
     Connected,
+    DefaultChanged,
     Disconnected,
+    InventoryChanged,
+    MuteChanged,
+    VolumeChanged,
 }
 
 #[derive(Deserialize)]
@@ -76,17 +80,47 @@ pub(crate) fn parse_device_event(line: &[u8]) -> Result<DeviceEvent, NativeAgent
 
 impl DeviceEvent {
     pub(crate) fn is_audio_change(&self) -> bool {
-        matches!(self.category, DeviceEventCategory::Audio)
-            && matches!(self.change, DeviceEventChange::Changed)
+        matches!(
+            self.category,
+            DeviceEventCategory::Audio
+                | DeviceEventCategory::AudioInput
+                | DeviceEventCategory::AudioOutput
+        ) && matches!(
+            self.change,
+            DeviceEventChange::Changed
+                | DeviceEventChange::Connected
+                | DeviceEventChange::DefaultChanged
+                | DeviceEventChange::Disconnected
+                | DeviceEventChange::InventoryChanged
+                | DeviceEventChange::MuteChanged
+                | DeviceEventChange::VolumeChanged
+        )
     }
 
     pub(crate) fn is_camera_change(&self) -> bool {
         matches!(self.category, DeviceEventCategory::Camera)
-            && matches!(self.change, DeviceEventChange::Changed)
+            && matches!(
+                self.change,
+                DeviceEventChange::Changed
+                    | DeviceEventChange::Connected
+                    | DeviceEventChange::Disconnected
+                    | DeviceEventChange::InventoryChanged
+            )
     }
     pub(crate) fn is_peripheral_change(&self) -> bool {
-        matches!(self.category, DeviceEventCategory::Peripheral)
-            && matches!(self.change, DeviceEventChange::Changed)
+        matches!(
+            self.category,
+            DeviceEventCategory::Keyboard
+                | DeviceEventCategory::Mouse
+                | DeviceEventCategory::Peripheral
+                | DeviceEventCategory::Trackpad
+        ) && matches!(
+            self.change,
+            DeviceEventChange::Changed
+                | DeviceEventChange::Connected
+                | DeviceEventChange::Disconnected
+                | DeviceEventChange::InventoryChanged
+        )
     }
 }
 
@@ -165,5 +199,32 @@ mod tests {
         }"#;
 
         assert!(parse_device_event(invalid).is_err());
+    }
+
+    #[test]
+    fn accepts_typed_audio_property_events() {
+        for (change, category) in [
+            ("inventory-changed", "audio"),
+            ("default-changed", "audio-input"),
+            ("volume-changed", "audio-output"),
+            ("mute-changed", "audio-input"),
+        ] {
+            let event = format!(
+                r#"{{
+                    "kind":"device-change",
+                    "version":1,
+                    "event":{{
+                        "id":"coreaudio.device-42",
+                        "category":"{category}",
+                        "change":"{change}",
+                        "occurredAt":"2026-08-07T12:00:00Z"
+                    }}
+                }}"#
+            );
+
+            let parsed = parse_device_event(event.as_bytes())
+                .expect("typed audio event should be accepted");
+            assert!(parsed.is_audio_change());
+        }
     }
 }

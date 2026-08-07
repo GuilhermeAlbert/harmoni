@@ -85,21 +85,8 @@ func discoverAudioDevices() -> AudioDiscoveryResult {
 }
 
 func watchAudioDeviceEvents() -> Never {
-    var address = AudioObjectPropertyAddress(
-        mSelector: kAudioHardwarePropertyDevices,
-        mScope: kAudioObjectPropertyScopeGlobal,
-        mElement: kAudioObjectPropertyElementMain
-    )
-    let queue = DispatchQueue(label: "com.harmoni.audio-device-events")
-    let status = AudioObjectAddPropertyListenerBlock(
-        AudioObjectID(kAudioObjectSystemObject),
-        &address,
-        queue
-    ) { _, _ in
-        writeAudioDeviceChangeEvent()
-    }
-
-    guard status == noErr else {
+    let watcher = AudioDeviceEventWatcher()
+    guard watcher.start() else {
         FileHandle.standardError.write(
             Data("Failed to observe Core Audio device changes.\n".utf8)
         )
@@ -571,14 +558,151 @@ private func stringProperty(
     return value?.takeUnretainedValue() as String?
 }
 
-private func writeAudioDeviceChangeEvent() {
+private struct AudioPropertyListener {
+    let objectID: AudioObjectID
+    var address: AudioObjectPropertyAddress
+    let block: AudioObjectPropertyListenerBlock
+}
+
+private final class AudioDeviceEventWatcher {
+    private let queue = DispatchQueue(label: "com.harmoni.audio-device-events")
+    private var deviceListeners: [AudioPropertyListener] = []
+    private var systemListeners: [AudioPropertyListener] = []
+
+    func start() -> Bool {
+        guard addSystemListener(
+            selector: kAudioHardwarePropertyDevices,
+            id: "audio.inventory",
+            category: "audio",
+            change: "inventory-changed",
+            rebuildDevices: true
+        ), addSystemListener(
+            selector: kAudioHardwarePropertyDefaultInputDevice,
+            id: "audio.default-input",
+            category: "audio-input",
+            change: "default-changed"
+        ), addSystemListener(
+            selector: kAudioHardwarePropertyDefaultOutputDevice,
+            id: "audio.default-output",
+            category: "audio-output",
+            change: "default-changed"
+        ) else {
+            removeAllListeners()
+            return false
+        }
+        rebuildDeviceListeners()
+        return true
+    }
+
+    private func addSystemListener(
+        selector: AudioObjectPropertySelector,
+        id: String,
+        category: String,
+        change: String,
+        rebuildDevices: Bool = false
+    ) -> Bool {
+        addListener(
+            objectID: AudioObjectID(kAudioObjectSystemObject),
+            selector: selector,
+            scope: kAudioObjectPropertyScopeGlobal,
+            storage: &systemListeners
+        ) { [weak self] in
+            writeAudioDeviceChangeEvent(id: id, category: category, change: change)
+            if rebuildDevices { self?.rebuildDeviceListeners() }
+        }
+    }
+
+    private func rebuildDeviceListeners() {
+        removeListeners(&deviceListeners)
+        for deviceID in audioDeviceIDs() {
+            guard let uid = stringProperty(
+                objectID: deviceID,
+                selector: kAudioDevicePropertyDeviceUID
+            ) else { continue }
+            for (direction, scope, category) in [
+                ("input", kAudioDevicePropertyScopeInput, "audio-input"),
+                ("output", kAudioDevicePropertyScopeOutput, "audio-output"),
+            ] where hasStreams(deviceID: deviceID, scope: scope) {
+                let stableID = "\(uid):\(direction)"
+                _ = addListener(
+                    objectID: deviceID,
+                    selector: kAudioDevicePropertyVolumeScalar,
+                    scope: scope,
+                    storage: &deviceListeners
+                ) {
+                    writeAudioDeviceChangeEvent(
+                        id: stableID,
+                        category: category,
+                        change: "volume-changed"
+                    )
+                }
+                _ = addListener(
+                    objectID: deviceID,
+                    selector: kAudioDevicePropertyMute,
+                    scope: scope,
+                    storage: &deviceListeners
+                ) {
+                    writeAudioDeviceChangeEvent(
+                        id: stableID,
+                        category: category,
+                        change: "mute-changed"
+                    )
+                }
+            }
+        }
+    }
+
+    private func addListener(
+        objectID: AudioObjectID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope,
+        storage: inout [AudioPropertyListener],
+        onChange: @escaping () -> Void
+    ) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: scope,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectHasProperty(objectID, &address) else { return false }
+        let block: AudioObjectPropertyListenerBlock = { _, _ in onChange() }
+        guard AudioObjectAddPropertyListenerBlock(objectID, &address, queue, block) == noErr else {
+            return false
+        }
+        storage.append(AudioPropertyListener(objectID: objectID, address: address, block: block))
+        return true
+    }
+
+    private func removeListeners(_ listeners: inout [AudioPropertyListener]) {
+        for var listener in listeners {
+            AudioObjectRemovePropertyListenerBlock(
+                listener.objectID,
+                &listener.address,
+                queue,
+                listener.block
+            )
+        }
+        listeners.removeAll()
+    }
+
+    private func removeAllListeners() {
+        removeListeners(&deviceListeners)
+        removeListeners(&systemListeners)
+    }
+}
+
+private func writeAudioDeviceChangeEvent(
+    id: String,
+    category: String,
+    change: String
+) {
     let envelope = DeviceEventEnvelope(
         kind: "device-change",
         version: PROTOCOL_VERSION,
         event: DeviceEvent(
-            id: "audio.devices",
-            category: "audio",
-            change: "changed",
+            id: id,
+            category: category,
+            change: change,
             occurredAt: ISO8601DateFormatter().string(from: Date())
         )
     )
