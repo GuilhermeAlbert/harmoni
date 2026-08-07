@@ -94,7 +94,7 @@ export function Overview(): React.ReactNode {
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col justify-between gap-6 xl:flex-row xl:items-end">
           <div className="max-w-3xl">
-            <Badge tone={BadgeTone.Success}>{overviewMessages.fixtureLabel}</Badge>
+            <Badge tone={BadgeTone.Success}>{overviewMessages.liveDataLabel}</Badge>
             <p className="mt-4 text-xs uppercase tracking-wider text-zinc-500">{overviewMessages.eyebrow}</p>
             <h2 className="mt-3 text-3xl font-semibold sm:text-5xl">{overviewMessages.title}</h2>
             <p className="mt-4 text-sm text-zinc-500">{overviewMessages.description}</p>

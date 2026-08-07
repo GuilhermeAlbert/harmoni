@@ -48,14 +48,11 @@ export const EN_MESSAGES = {
       "This route is ready for its focused product specification.",
   },
   overview: {
-    fixtureLabel: "Live system data",
+    liveDataLabel: "Live system data",
     eyebrow: "System overview",
     title: "Everything connected. Nothing out of tune.",
     description:
       "Review audio, camera, and peripheral devices discovered directly from macOS.",
-    privacyMode: "Privacy mode",
-    applyWorkProfile: "Apply Work profile",
-    refresh: "Refresh devices",
     refreshing: "Refreshing devices",
     recover: "Retry synchronization",
     cameraPreferenceHint: "Preferred only inside Harmoni",
@@ -72,14 +69,6 @@ export const EN_MESSAGES = {
       preferenceSaved: "Harmoni camera preference saved.",
       savingPreference: "Saving Harmoni camera preference…",
     },
-    fixtureStateLabel: "Fixture state",
-    fixtureStateHint: "Choose a state to preview this route.",
-    states: {
-      success: "Success",
-      loading: "Loading",
-      empty: "Empty",
-      error: "Error",
-    },
     metrics: {
       audioInput: "Audio input",
       audioOutput: "Audio output",
@@ -88,63 +77,6 @@ export const EN_MESSAGES = {
       connected: "connected",
       noActiveDevice: "No active device",
       allResponding: "All supported devices responding",
-      volume: "volume",
-      muted: "Muted",
-      unmuted: "Unmuted",
-      loading: "Reading macOS",
-      audioUnavailable: "Audio discovery is unavailable",
-      cameraUnavailable: "Camera discovery is unavailable",
-      unavailableReading: "Reading unavailable",
-      zoom: "zoom",
-    },
-    devices: {
-      title: "Connected devices",
-      description: "Enable or disable supported fixture devices.",
-      viewAll: "View all",
-      status: {
-        active: "Active",
-        connected: "Connected",
-        disconnected: "Disconnected",
-        unsupported: "Control unsupported",
-        unavailable: "Unavailable",
-      },
-      categories: {
-        audioInput: "Microphone",
-        audioOutput: "Audio output",
-        camera: "Camera",
-        keyboard: "Keyboard",
-        mouse: "Mouse",
-        peripheral: "Peripheral",
-        trackpad: "Trackpad",
-      },
-      battery: "battery",
-      enable: "Enable device",
-      disable: "Disable device",
-    },
-    quickActions: {
-      title: "Quick actions",
-      description: "Local demonstrations of common routines.",
-      disableCameras: "Disable all cameras",
-      disableCamerasHint: "Enter simulated privacy mode",
-      recordingProfile: "Recording profile",
-      recordingProfileHint: "Select the simulated recording setup",
-    },
-    loading: "Loading simulated devices",
-    emptyTitle: "No fixture devices",
-    emptyDescription:
-      "This demonstrates how the overview behaves when discovery returns no devices.",
-    errorTitle: "Fixture discovery failed",
-    errorDescription:
-      "This simulated error remains visible instead of falling back to hidden device data.",
-    retry: "Try fixture again",
-    feedback: {
-      refreshed: "Simulated device list refreshed.",
-      deviceEnabled: "Device enabled in this simulation.",
-      deviceDisabled: "Device disabled in this simulation.",
-      privacyEnabled: "Simulated privacy mode enabled.",
-      workApplied: "Simulated Work profile applied.",
-      camerasDisabled: "All simulated cameras disabled.",
-      recordingApplied: "Simulated Recording profile applied.",
     },
   },
   audio: {
@@ -193,7 +125,7 @@ export const EN_MESSAGES = {
       "macOS did not report any audio inputs or outputs.",
     errorTitle: "Audio discovery unavailable",
     errorDescription:
-      "Harmoni could not read the current Core Audio device list. No simulated devices were substituted.",
+      "Harmoni could not read the current Core Audio device list. Retry after checking the native diagnostics.",
     retry: "Try again",
     feedback: {
       saving: "Applying the audio change to macOS.",
@@ -265,7 +197,7 @@ export const EN_MESSAGES = {
       "AVFoundation did not report any connected video devices.",
     errorTitle: "Camera discovery unavailable",
     errorDescription:
-      "Harmoni could not read the current camera inventory. No simulated cameras were substituted.",
+      "Harmoni could not read the current camera inventory. Retry after checking camera access and native diagnostics.",
     retry: "Try again",
     feedback: {
       pending: "Saving the camera change.",
@@ -276,7 +208,6 @@ export const EN_MESSAGES = {
   },
   peripherals: {
     realDataLabel: "Live data from macOS",
-    fixtureLabel: "Simulated fixture data",
     eyebrow: "Peripheral workspace",
     title: "Every peripheral, clearly accounted for.",
     description:
@@ -288,14 +219,6 @@ export const EN_MESSAGES = {
     inputMonitoringGuidance: "Not authorized. Device metadata may be limited; enable Input Monitoring in System Settings if needed.",
     lightingLimitation: "Lighting controls are hidden because no safe documented protocol is verified for the connected devices.",
     unavailableMetadata: "Manufacturer unavailable",
-    stateLabel: "Fixture state",
-    stateHint: "Choose a state to preview this route.",
-    states: {
-      success: "Success",
-      loading: "Loading",
-      empty: "Empty",
-      error: "Error",
-    },
     listTitle: "Connected peripherals",
     listDescription: "Keyboard, mouse, trackpad, and other devices reported by IOHIDManager.",
     categories: {
@@ -428,7 +351,7 @@ export const EN_MESSAGES = {
     unavailableDescription:
       "Native integration is available only in the Harmoni desktop application.",
     errorDescription:
-      "Harmoni could not validate the native agent. No simulated value was substituted.",
+      "Harmoni could not validate the bundled native agent. Review the watcher details and retry.",
     retry: "Try again",
     appVersion: "Application version",
     agentVersion: "Agent version",
@@ -449,18 +372,12 @@ export const EN_MESSAGES = {
     },
   },
   settingsScreen: {
-    fixtureLabel: "System controls use simulated fixture data",
     eyebrow: "Application settings",
     title: "Preferences with clear boundaries.",
     description:
-      "Theme and language are real local settings. Native versions and permission statuses come from macOS, while system controls remain explicit fixtures.",
+      "Manage local appearance and language preferences, review macOS permissions, and inspect native diagnostics.",
     interfaceTitle: "Interface",
     interfaceDescription: "Real preferences stored locally by Harmoni.",
-    systemTitle: "System behavior",
-    systemDescription: "Local demonstrations that do not change macOS.",
-    launchAtLogin: "Launch at login",
-    launchAtLoginDescription: "Start Harmoni automatically with macOS.",
-    simulatedControl: "Simulated control",
     permissionsTitle: "System permissions",
     permissionsDescription: "Read-only status from macOS. Opening this screen never requests permission. Accessibility and Input Monitoring may only report whether access is currently granted.",
     categories: {
@@ -482,7 +399,7 @@ export const EN_MESSAGES = {
     emptyTitle: "No permission status returned",
     emptyDescription: "macOS did not return any permission information.",
     errorTitle: "Permission status unavailable",
-    errorDescription: "Harmoni could not read permission status. No simulated value was substituted.",
+    errorDescription: "Harmoni could not read permission status from macOS. Review native diagnostics and retry.",
     refreshPermissions: "Refresh",
     refreshingPermissions: "Refreshing permissions",
     retryPermissions: "Try again",
@@ -494,10 +411,6 @@ export const EN_MESSAGES = {
     reviewError: "The selected privacy pane could not be opened.",
     appInfoTitle: "Diagnostics",
     appInfoDescription: "Application and native-agent versions reported by the local integration.",
-    feedback: {
-      launchEnabled: "Launch at login enabled only in this simulation.",
-      launchDisabled: "Launch at login disabled only in this simulation.",
-    },
   },
   theme: {
     label: "Appearance",

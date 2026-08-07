@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { MonitorCog, Power } from "lucide-react";
+import { MonitorCog } from "lucide-react";
 
 import { PermissionSummary } from "../permission-summary";
 import { Badge } from "@/components/badge";
@@ -12,35 +11,22 @@ import { LanguageSelector } from "@/components/language-selector";
 import { Panel } from "@/components/panel";
 import { Spinner } from "@/components/spinner";
 import { SpinnerSize } from "@/components/spinner/enums";
-import { Switch } from "@/components/switch";
 import { ThemeSelector } from "@/components/theme-selector";
 import { useLanguage } from "@/contexts/language/use-language";
 import { useNativeAgent } from "@/contexts/native-agent/use-native-agent";
 import { NativeAgentState } from "@/lib/enums/native-agent-state";
 
 export function SettingsScreen(): React.ReactNode {
-  const [feedback, setFeedback] = useState("");
-  const [launchAtLogin, setLaunchAtLogin] = useState(false);
   const { messages } = useLanguage();
   const { health, retry, state } = useNativeAgent();
   const nativeMessages = messages.nativeAgent;
   const settingsMessages = messages.settingsScreen;
 
-  const handleLaunchAtLoginChange = (enabled: boolean): void => {
-    setLaunchAtLogin(enabled);
-    setFeedback(
-      enabled
-        ? settingsMessages.feedback.launchEnabled
-        : settingsMessages.feedback.launchDisabled,
-    );
-  };
-
   return (
     <main className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="max-w-3xl">
-          <Badge tone={BadgeTone.Warning}>{settingsMessages.fixtureLabel}</Badge>
-          <p className="mt-4 font-[family-name:var(--font-commit-mono)] text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          <p className="font-[family-name:var(--font-commit-mono)] text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">
             {settingsMessages.eyebrow}
           </p>
           <h2 className="mt-3 font-[family-name:var(--font-geist)] text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-4xl">
@@ -51,15 +37,7 @@ export function SettingsScreen(): React.ReactNode {
           </p>
         </div>
 
-        <p
-          aria-live="polite"
-          className="mt-5 min-h-5 text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          role="status"
-        >
-          {feedback}
-        </p>
-
-        <div className="mt-4 grid gap-4">
+        <div className="mt-6 grid gap-4">
           <Panel className="overflow-hidden">
             <header className="border-b border-zinc-200 px-5 py-4 dark:border-white/[0.08]">
               <h2 className="text-sm font-semibold">
@@ -72,40 +50,6 @@ export function SettingsScreen(): React.ReactNode {
             <div className="grid gap-6 p-5 md:grid-cols-2">
               <ThemeSelector />
               <LanguageSelector />
-            </div>
-          </Panel>
-
-          <Panel className="overflow-hidden">
-            <header className="border-b border-zinc-200 px-5 py-4 dark:border-white/[0.08]">
-              <h2 className="text-sm font-semibold">
-                {settingsMessages.systemTitle}
-              </h2>
-              <p className="mt-1 text-xs text-zinc-500">
-                {settingsMessages.systemDescription}
-              </p>
-            </header>
-            <div className="flex flex-col justify-between gap-4 px-5 py-4 sm:flex-row sm:items-center">
-              <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-zinc-400">
-                  <Power aria-hidden="true" className="size-4" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-medium">
-                    {settingsMessages.launchAtLogin}
-                  </h3>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {settingsMessages.launchAtLoginDescription}
-                  </p>
-                  <Badge className="mt-2" tone={BadgeTone.Warning}>
-                    {settingsMessages.simulatedControl}
-                  </Badge>
-                </div>
-              </div>
-              <Switch
-                accessibleName={settingsMessages.launchAtLogin}
-                checked={launchAtLogin}
-                onCheckedChange={handleLaunchAtLoginChange}
-              />
             </div>
           </Panel>
 

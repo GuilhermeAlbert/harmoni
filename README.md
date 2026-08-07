@@ -9,9 +9,9 @@
 Harmoni is a macOS desktop application for centralized audio, camera,
 peripheral, permission, and local profile management.
 
-## Planned architecture
+## Architecture
 
-Harmoni will be delivered in small, independently validated stages:
+Harmoni uses the following local desktop architecture:
 
 1. A Next.js App Router frontend built with React, strict TypeScript, and
    Tailwind CSS.
@@ -19,10 +19,10 @@ Harmoni will be delivered in small, independently validated stages:
    Next.js runtime server.
 3. A Tauri 2 host written in Rust that owns the desktop boundary and exposes
    narrow, typed commands to the frontend.
-4. A Swift executable that integrates with supported public macOS APIs for
+4. A bundled Swift executable that integrates with supported public macOS APIs for
    platform-specific device operations.
 
-The intended native request path is:
+The native request path is:
 
 ```text
 Next.js → frontend service → Tauri command → Rust → Swift → typed response
@@ -35,20 +35,54 @@ Next.js → frontend service → Tauri command → Rust → Swift → typed resp
 - Stable Rust with the minimal profile, rustfmt, and Clippy
 - Swift from the active Xcode command-line toolchain
 
-Framework and application scripts will be added only by the specifications that
-introduce their corresponding toolchains. This foundation intentionally has no
-dependencies, application source directories, or placeholder build commands.
+Use the exact Node and Yarn versions declared by the repository before running
+development or packaging commands.
 
 ## Local development
 
 ```bash
-yarn install --frozen-lockfile
-yarn tauri dev
+make install
+make dev
 ```
 
-The static frontend can be validated with `yarn lint` and `yarn build`. The
-native layers can be validated with `cargo test --manifest-path
-src-tauri/Cargo.toml` and `yarn native:build`.
+Run `make help` to list all commands. Common targets are:
+
+- `make web-dev` — run only the Next.js frontend.
+- `make validate` — run version, frontend, Rust, and Swift validation.
+- `make package` — validate and build local unsigned `.app` and DMG artifacts.
+
+The equivalent low-level Yarn and Cargo commands remain available for CI and
+focused debugging.
+
+## Supported capabilities
+
+- **Audio:** Discover Core Audio inputs and outputs, identify current defaults,
+  change supported defaults, and read or change volume and mute only when the
+  selected device exposes those properties.
+- **Cameras:** Discover AVFoundation cameras, keep a Harmoni-local preferred
+  camera, and run an explicit local preview session. Preview data stays on the
+  Mac and capture stops on Stop, route exit, camera change, or application exit.
+- **Camera controls:** Zoom and exposure controls are hidden on macOS because
+  the public AVFoundation SDK does not expose the reversible device mutations
+  required by Harmoni.
+- **Peripherals:** Discover user-operable HID keyboards, mice, trackpads, and
+  controllers. Harmoni does not claim generic enable or disable control.
+- **Lighting:** Connected HID lighting metadata may be inspected read-only, but
+  no LED write is sent unless a documented device-specific protocol is verified.
+- **Profiles:** Persist local schema-v2 profiles, migrate valid v1 storage with a
+  backup, preflight every requested operation, report partial results, and stop
+  Harmoni's own camera preview for Private profiles. Profiles do not disable all
+  cameras system-wide.
+- **Permissions:** Read camera, microphone, Accessibility, and Input Monitoring
+  status where public macOS APIs allow it, and open the corresponding System
+  Settings pane only after user action.
+- **Live state:** Supervised native watchers reconcile audio, camera, and HID
+  changes without substituting fixture data after native failures.
+
+Known limitations include no generic HID disable, no verified LED writes for
+the currently tested Keychron/Fifine identities, no global default-camera API,
+and no system-wide camera privacy switch. Signing and notarization require the
+Apple credentials described below.
 
 ## Versions and macOS packages
 
@@ -76,6 +110,5 @@ and macOS Gatekeeper may require users to approve them manually.
 - Keep source code, identifiers, technical documentation, and commits in
   English.
 - Prefer small, explicit boundaries and avoid abstractions without real use.
-- Keep fixture data visibly separate from native data.
-- Treat unsupported macOS operations as explicit capabilities rather than
-  simulated success.
+- Do not replace native failures with fixture data.
+- Treat unsupported macOS operations as explicit capabilities.
