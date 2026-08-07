@@ -3,6 +3,8 @@ mod events;
 mod sidecar;
 mod storage;
 
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -10,6 +12,7 @@ pub fn run() {
         .manage(events::AudioEventProcess::default())
         .manage(events::CameraEventProcess::default())
         .manage(events::HidEventProcess::default())
+        .manage(commands::camera::CameraPreviewProcess::default())
         .setup(|app| {
             events::start_audio_device_events(app.handle().clone());
             events::start_camera_device_events(app.handle().clone());
@@ -27,6 +30,8 @@ pub fn run() {
             commands::camera::set_camera_exposure,
             commands::camera::set_camera_zoom,
             commands::camera::set_preferred_camera,
+            commands::camera::start_camera_preview,
+            commands::camera::stop_camera_preview,
             commands::hid::get_peripherals,
             commands::native_agent::get_agent_health,
             commands::device_events::trigger_development_device_event,
@@ -41,6 +46,11 @@ pub fn run() {
 
     app.run(|app_handle, event| {
         if matches!(event, tauri::RunEvent::Exit) {
+            commands::camera::stop_camera_preview_process(
+                app_handle
+                    .state::<commands::camera::CameraPreviewProcess>()
+                    .inner(),
+            );
             events::stop_audio_device_events(app_handle);
             events::stop_camera_device_events(app_handle);
             events::stop_hid_device_events(app_handle);

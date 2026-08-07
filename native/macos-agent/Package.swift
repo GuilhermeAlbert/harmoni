@@ -12,5 +12,6 @@ let package = Package(
     ],
     targets: [
         .executableTarget(name: "HarmoniAgent"),
+        .testTarget(name: "HarmoniAgentTests", dependencies: ["HarmoniAgent"]),
     ]
 )

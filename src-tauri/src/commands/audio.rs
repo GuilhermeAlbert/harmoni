@@ -92,7 +92,13 @@ pub(crate) async fn set_audio_volume<R: Runtime>(
     volume: u8,
 ) -> Result<AudioDevice, NativeAgentError> {
     validate_volume(volume)?;
-    mutate_audio_device(&app, SET_VOLUME_METHOD, device_id, json!({ "volume": volume })).await
+    mutate_audio_device(
+        &app,
+        SET_VOLUME_METHOD,
+        device_id,
+        json!({ "volume": volume }),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -272,7 +278,8 @@ mod tests {
                         "canSetDefault":true
                     }
                 }
-            }"#.to_vec(),
+            }"#
+            .to_vec(),
         };
 
         let device = parse_audio_mutation(&output, "device-uid:input")

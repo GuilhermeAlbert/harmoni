@@ -27,7 +27,7 @@ pub(crate) enum PeripheralTransport {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub(crate) struct Peripheral {
     id: String,
     name: String,
@@ -36,10 +36,7 @@ pub(crate) struct Peripheral {
     transport: PeripheralTransport,
     vendor_id: Option<u16>,
     product_id: Option<u16>,
-    connected: bool,
     battery_percent: Option<u8>,
-    can_disable: bool,
-    disable_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -66,7 +63,7 @@ fn parse_hid_discovery(output: &AgentOutput) -> Result<HidDiscovery, NativeAgent
         .collect();
     if !matches!(
         result.input_monitoring.as_str(),
-        "authorized" | "unknown" | "unsupported"
+        "authorized" | "not-granted" | "unknown" | "unsupported"
     ) || ids.len() != result.peripherals.len()
         || result.peripherals.len() > 512
         || result.peripherals.iter().any(|item| {
@@ -76,8 +73,6 @@ fn parse_hid_discovery(output: &AgentOutput) -> Result<HidDiscovery, NativeAgent
                 || item.name.len() > 512
                 || item.manufacturer.len() > 512
                 || item.battery_percent.is_some_and(|value| value > 100)
-                || (!item.can_disable
-                    && item.disable_reason.as_deref() != Some("unsupported-by-macos"))
         })
     {
         return Err(NativeAgentError::protocol());
@@ -94,7 +89,7 @@ mod tests {
     fn accepts_safe_real_hid_metadata() {
         let output = AgentOutput {
             request_id: "hid-test".to_owned(),
-            line: br#"{"id":"hid-test","version":1,"result":{"inputMonitoring":"authorized","peripherals":[{"id":"hid-abc123","name":"Keyboard","manufacturer":"Acme","category":"keyboard","transport":"usb","vendorId":123,"productId":456,"connected":true,"batteryPercent":null,"canDisable":false,"disableReason":"unsupported-by-macos"}]}}"#.to_vec(),
+            line: br#"{"id":"hid-test","version":1,"result":{"inputMonitoring":"authorized","peripherals":[{"id":"hid-abc123","name":"Keyboard","manufacturer":"Acme","category":"keyboard","transport":"usb","vendorId":123,"productId":456,"batteryPercent":null}]}}"#.to_vec(),
         };
         let result = parse_hid_discovery(&output).expect("valid HID inventory should parse");
         assert_eq!(result.peripherals.len(), 1);
@@ -104,7 +99,16 @@ mod tests {
     fn rejects_fabricated_or_unsafe_capabilities() {
         let output = AgentOutput {
             request_id: "hid-test".to_owned(),
-            line: br#"{"id":"hid-test","version":1,"result":{"inputMonitoring":"unknown","peripherals":[{"id":"hid-bad","name":"Mouse","manufacturer":"Acme","category":"mouse","transport":"usb","vendorId":1,"productId":2,"connected":true,"batteryPercent":101,"canDisable":false,"disableReason":null}]}}"#.to_vec(),
+            line: br#"{"id":"hid-test","version":1,"result":{"inputMonitoring":"unknown","peripherals":[{"id":"hid-bad","name":"Mouse","manufacturer":"Acme","category":"mouse","transport":"usb","vendorId":1,"productId":2,"batteryPercent":101}]}}"#.to_vec(),
+        };
+        assert!(parse_hid_discovery(&output).is_err());
+    }
+
+    #[test]
+    fn rejects_removed_device_control_claims() {
+        let output = AgentOutput {
+            request_id: "hid-test".to_owned(),
+            line: br#"{"id":"hid-test","version":1,"result":{"inputMonitoring":"unknown","peripherals":[{"id":"hid-bad","name":"Mouse","manufacturer":"Acme","category":"mouse","transport":"usb","vendorId":1,"productId":2,"batteryPercent":50,"connected":true,"canDisable":false}]}}"#.to_vec(),
         };
         assert!(parse_hid_discovery(&output).is_err());
     }
@@ -117,9 +121,6 @@ mod tests {
             .expect("app should build");
         let result = tauri::async_runtime::block_on(get_peripherals(app.handle().clone()))
             .expect("HID inventory should validate");
-        assert!(result
-            .peripherals
-            .iter()
-            .all(|item| !item.id.is_empty() && !item.can_disable));
+        assert!(result.peripherals.iter().all(|item| !item.id.is_empty()));
     }
 }

@@ -16,6 +16,7 @@ struct RequestParameters: Codable {
     let muted: Bool?
     let cameraId: String?
     let value: Double?
+    let outputPath: String?
 }
 
 struct AgentInfoResult: Encodable {
@@ -38,7 +39,9 @@ enum ResultPayload: Encodable {
     case cameras(CameraDiscoveryResult)
     case cameraMutation(CameraMutationResult)
     case hidDevices(HidDiscoveryResult)
+    case lightingDiagnostics(LightingDiagnosticResult)
     case permissionStatus(PermissionStatusResult)
+    case previewStart(CameraPreviewStartResult)
     case openSettings(OpenSettingsResult)
 
     func encode(to encoder: Encoder) throws {
@@ -55,7 +58,11 @@ enum ResultPayload: Encodable {
             try result.encode(to: encoder)
         case let .hidDevices(result):
             try result.encode(to: encoder)
+        case let .lightingDiagnostics(result):
+            try result.encode(to: encoder)
         case let .permissionStatus(result):
+            try result.encode(to: encoder)
+        case let .previewStart(result):
             try result.encode(to: encoder)
         case let .openSettings(result):
             try result.encode(to: encoder)

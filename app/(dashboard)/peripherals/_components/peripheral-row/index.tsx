@@ -8,11 +8,7 @@ import {
 } from "lucide-react";
 
 import type { PeripheralRowProps } from "./types";
-import { Badge } from "@/components/badge";
-import { BadgeTone } from "@/components/badge/enums";
-import { Switch } from "@/components/switch";
 import { PeripheralCategory } from "@/lib/enums/peripheral-category";
-import { PeripheralConnection } from "@/lib/enums/peripheral-connection";
 import { PeripheralTransport } from "@/lib/enums/peripheral-transport";
 
 const PERIPHERAL_ICONS: Record<PeripheralCategory, LucideIcon> = {
@@ -49,16 +45,9 @@ export function PeripheralRow({
   messages,
   peripheral,
 }: PeripheralRowProps): React.ReactNode {
-  const connected =
-    peripheral.connection === PeripheralConnection.Connected;
-  const controllable = connected && peripheral.canDisable;
   const Icon = PERIPHERAL_ICONS[peripheral.category];
-  const reasonId = `${peripheral.id}-control-reason`;
-  const reason = !connected
-    ? messages.disconnectedReason
-    : !peripheral.canDisable
-      ? messages.disableReasons[peripheral.disableReason === "unsupported-by-macos" ? "unsupportedByMacOS" : "unknown"]
-      : null;
+  const batteryPercent = peripheral.batteryPercent;
+  const hasBattery = batteryPercent !== undefined && Number.isInteger(batteryPercent) && batteryPercent >= 0 && batteryPercent <= 100;
 
   return (
     <li className="px-4 py-4 sm:px-5">
@@ -75,35 +64,11 @@ export function PeripheralRow({
             {peripheral.manufacturer || messages.unavailableMetadata}
               {" · "}
               {messages.transports[TRANSPORT_MESSAGE_KEYS[peripheral.transport]]}
-              {peripheral.batteryPercent === undefined
+            {!hasBattery
                 ? ""
-                : ` · ${peripheral.batteryPercent}% ${messages.battery}`}
+                : ` · ${messages.batteryLevel}: ${batteryPercent}%`}
             </p>
-            {reason ? (
-              <p
-                className="mt-2 max-w-xl text-xs leading-5 text-amber-800 dark:text-amber-200"
-                id={reasonId}
-              >
-                {reason}
-              </p>
-            ) : null}
           </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-3 self-end sm:self-auto">
-          <Badge tone={connected ? BadgeTone.Success : BadgeTone.Danger}>
-            {connected ? messages.connected : messages.disconnected}
-          </Badge>
-          <Badge tone={peripheral.enabled ? BadgeTone.Neutral : BadgeTone.Warning}>
-            {peripheral.enabled ? messages.enabled : messages.disabled}
-          </Badge>
-          <Switch
-            accessibleName={`${peripheral.enabled ? messages.disable : messages.enable}: ${peripheral.name}`}
-            aria-describedby={reason ? reasonId : undefined}
-            checked={peripheral.enabled}
-            disabled={!controllable}
-            onCheckedChange={() => undefined}
-          />
         </div>
       </article>
     </li>

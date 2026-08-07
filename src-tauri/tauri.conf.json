@@ -21,6 +21,10 @@
     ],
     "security": {
       "capabilities": ["default"],
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPCACHE/**"]
+      },
       "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src ipc: http://ipc.localhost"
     }
   },

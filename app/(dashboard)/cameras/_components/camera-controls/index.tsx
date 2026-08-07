@@ -13,12 +13,17 @@ export function CameraControls({
   const controls = [
     { action: CameraAction.Zoom, capability: camera.zoom, label: messages.zoom, onChange: onZoomChange },
     { action: CameraAction.Exposure, capability: camera.exposure, label: messages.exposure, onChange: onExposureChange },
-  ] as const;
+  ].filter(({ capability }) => capability?.canControl === true);
 
   return (
     <Panel className="p-5">
       <h2 className="text-sm font-semibold">{messages.controlsTitle}</h2>
       <p className="mt-1 text-xs text-zinc-500">{messages.controlsDescription}</p>
+      {controls.length === 0 ? (
+        <p className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs leading-5 text-zinc-600 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-zinc-400">
+          {messages.controlsUnsupportedMacOS}
+        </p>
+      ) : null}
       <div className="mt-5 grid gap-6">
         {controls.map(({ action, capability, label, onChange }) => {
           const controlPending = pending?.action === action && pending.cameraId === camera.id;

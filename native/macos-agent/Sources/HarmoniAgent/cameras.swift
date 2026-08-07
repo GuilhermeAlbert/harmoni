@@ -46,15 +46,7 @@ func discoverCameras() -> CameraDiscoveryResult {
         position: .unspecified
     )
     let cameras = discovery.devices.map { device in
-        DiscoveredCamera(
-            id: device.uniqueID,
-            name: device.localizedName,
-            transport: cameraTransport(device),
-            preferred: false,
-            formats: cameraFormats(device),
-            zoom: nil,
-            exposure: nil
-        )
+        makeCamera(device)
     }.sorted {
         ($0.preferred ? 0 : 1, $0.name, $0.id)
             < ($1.preferred ? 0 : 1, $1.name, $1.id)
@@ -66,40 +58,56 @@ func discoverCameras() -> CameraDiscoveryResult {
     )
 }
 
+func cameraDevice(stableID: String) -> AVCaptureDevice? {
+    AVCaptureDevice.DiscoverySession(
+        deviceTypes: cameraDeviceTypes(),
+        mediaType: .video,
+        position: .unspecified
+    ).devices.first(where: { $0.uniqueID == stableID })
+}
+
+private func makeCamera(_ device: AVCaptureDevice) -> DiscoveredCamera {
+    return DiscoveredCamera(
+            id: device.uniqueID,
+            name: device.localizedName,
+            transport: cameraTransport(device),
+            preferred: false,
+            formats: cameraFormats(device),
+            zoom: nil,
+            exposure: nil
+        )
+}
+
 func setCameraZoom(
     stableID: String,
     value: Double
 ) -> Result<CameraMutationResult, CameraMutationFailure> {
-    unsupportedCameraControl(stableID: stableID, value: value, control: "zoom")
+    guard value.isFinite else { return invalidCameraValue() }
+    guard cameraDevice(stableID: stableID) != nil else { return missingCamera() }
+    return unsupportedCameraControl(control: "zoom")
 }
 
 func setCameraExposure(
     stableID: String,
     value: Double
 ) -> Result<CameraMutationResult, CameraMutationFailure> {
-    unsupportedCameraControl(stableID: stableID, value: value, control: "exposure")
+    guard value.isFinite else { return invalidCameraValue() }
+    guard cameraDevice(stableID: stableID) != nil else { return missingCamera() }
+    return unsupportedCameraControl(control: "exposure")
 }
 
-private func unsupportedCameraControl(
-    stableID: String,
-    value: Double,
-    control: String
-) -> Result<CameraMutationResult, CameraMutationFailure> {
-    guard value.isFinite else {
-        return .failure(CameraMutationFailure(
-            code: "invalid_argument",
-            message: "Camera control value must be finite."
-        ))
-    }
-    guard discoverCameras().cameras.contains(where: { $0.id == stableID }) else {
-        return .failure(CameraMutationFailure(
-            code: "not_found",
-            message: "The requested camera was not found."
-        ))
-    }
+private func invalidCameraValue() -> Result<CameraMutationResult, CameraMutationFailure> {
+    .failure(CameraMutationFailure(code: "invalid_argument", message: "Camera control value must be finite."))
+}
+
+private func missingCamera() -> Result<CameraMutationResult, CameraMutationFailure> {
+    .failure(CameraMutationFailure(code: "not_found", message: "The requested camera was not found."))
+}
+
+private func unsupportedCameraControl(control: String) -> Result<CameraMutationResult, CameraMutationFailure> {
     return .failure(CameraMutationFailure(
         code: "unsupported",
-        message: "AVFoundation does not expose \(control) control for cameras on macOS."
+        message: "AVFoundation does not expose reversible \(control) control on macOS."
     ))
 }
 

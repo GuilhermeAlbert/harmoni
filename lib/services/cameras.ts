@@ -2,7 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { NativeAgentErrorCode } from "@/lib/enums/native-agent-error-code";
 import { createNativeAgentError } from "@/lib/services/native-agent";
-import type { CameraDiscovery } from "@/lib/types/camera";
+import type { CameraDiscovery, CameraPreviewSession } from "@/lib/types/camera";
 import type { Camera } from "@/lib/types/camera";
 import type { CameraPreference } from "@/lib/types/preferences";
 
@@ -11,6 +11,8 @@ const RESET_PREFERRED_CAMERA_COMMAND = "reset_preferred_camera";
 const SET_CAMERA_EXPOSURE_COMMAND = "set_camera_exposure";
 const SET_CAMERA_ZOOM_COMMAND = "set_camera_zoom";
 const SET_PREFERRED_CAMERA_COMMAND = "set_preferred_camera";
+const START_CAMERA_PREVIEW_COMMAND = "start_camera_preview";
+const STOP_CAMERA_PREVIEW_COMMAND = "stop_camera_preview";
 
 export async function getCameras(): Promise<CameraDiscovery> {
   if (!isTauri()) {
@@ -40,6 +42,24 @@ export async function setCameraZoom(cameraId: string, value: number): Promise<Ca
 
 export async function setCameraExposure(cameraId: string, value: number): Promise<Camera> {
   return invokeCameraMutation(SET_CAMERA_EXPOSURE_COMMAND, cameraId, value);
+}
+
+export async function startCameraPreview(cameraId: string): Promise<CameraPreviewSession> {
+  assertNativeCameraControl();
+  try {
+    return await invoke<CameraPreviewSession>(START_CAMERA_PREVIEW_COMMAND, { cameraId });
+  } catch (cause: unknown) {
+    throw createNativeAgentError(cause);
+  }
+}
+
+export async function stopCameraPreview(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke(STOP_CAMERA_PREVIEW_COMMAND);
+  } catch (cause: unknown) {
+    throw createNativeAgentError(cause);
+  }
 }
 
 async function invokeCameraPreference(

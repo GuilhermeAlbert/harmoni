@@ -47,6 +47,8 @@ enum NativeAgentErrorCode {
     Spawn,
     Terminated,
     Write,
+    PermissionDenied,
+    CameraInUse,
 }
 
 #[derive(Serialize)]
@@ -197,7 +199,7 @@ pub(crate) fn parse_agent_result<Payload: DeserializeOwned>(
     parse_agent_result_line(&output.line, &output.request_id)
 }
 
-fn parse_agent_result_line<Payload: DeserializeOwned>(
+pub(crate) fn parse_agent_result_line<Payload: DeserializeOwned>(
     line: &[u8],
     request_id: &str,
 ) -> Result<Payload, NativeAgentError> {
@@ -324,6 +326,8 @@ impl NativeAgentError {
             "not_found" => NativeAgentErrorCode::NotFound,
             "unsupported" => NativeAgentErrorCode::Unsupported,
             "process" => NativeAgentErrorCode::Process,
+            "permission_denied" => NativeAgentErrorCode::PermissionDenied,
+            "camera_in_use" => NativeAgentErrorCode::CameraInUse,
             _ => return Self::protocol(),
         };
         Self { code, message }

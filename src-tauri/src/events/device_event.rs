@@ -222,8 +222,8 @@ mod tests {
                 }}"#
             );
 
-            let parsed = parse_device_event(event.as_bytes())
-                .expect("typed audio event should be accepted");
+            let parsed =
+                parse_device_event(event.as_bytes()).expect("typed audio event should be accepted");
             assert!(parsed.is_audio_change());
         }
     }

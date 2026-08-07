@@ -2,18 +2,54 @@ use std::{
     collections::HashSet,
     fs,
     path::{Path, PathBuf},
+    sync::Mutex,
+    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{async_runtime::Receiver, AppHandle, Manager, Runtime, State};
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
+use tokio::time::timeout;
 
-use crate::sidecar::{parse_agent_result, request_agent_output, AgentOutput, NativeAgentError};
+use crate::sidecar::{
+    parse_agent_result, parse_agent_result_line, request_agent_output, spawn_agent_request,
+    AgentOutput, NativeAgentError,
+};
 
 const CAMERA_DEVICES_METHOD: &str = "camera.devices";
 const CAMERA_PREFERENCES_FILE: &str = "camera-preferences.json";
 const SET_CAMERA_EXPOSURE_METHOD: &str = "camera.setExposure";
 const SET_CAMERA_ZOOM_METHOD: &str = "camera.setZoom";
+const START_CAMERA_PREVIEW_METHOD: &str = "camera.startPreview";
+const CAMERA_PREVIEW_FILE: &str = "camera-preview.jpg";
+const CAMERA_PREVIEW_TIMEOUT: Duration = Duration::from_secs(35);
+
+#[derive(Default)]
+pub(crate) struct CameraPreviewProcess(Mutex<Option<RunningCameraPreview>>);
+
+struct RunningCameraPreview {
+    child: CommandChild,
+    output_path: PathBuf,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CameraPreviewSession {
+    file_path: String,
+    width: u32,
+    height: u32,
+    frame_rate: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CameraPreviewStartResult {
+    camera_id: String,
+    width: u32,
+    height: u32,
+    frame_rate: u32,
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -151,6 +187,109 @@ pub(crate) async fn set_camera_exposure<R: Runtime>(
     mutate_camera(&app, SET_CAMERA_EXPOSURE_METHOD, camera_id, value).await
 }
 
+#[tauri::command]
+pub(crate) async fn start_camera_preview<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, CameraPreviewProcess>,
+    camera_id: String,
+) -> Result<CameraPreviewSession, NativeAgentError> {
+    validate_camera_id(&camera_id)?;
+    stop_camera_preview_process(&state);
+    let output_path = camera_preview_path(&app)?;
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent).map_err(|_| NativeAgentError::process())?;
+    }
+    let _ = fs::remove_file(&output_path);
+    let output_path_string = output_path.to_string_lossy().into_owned();
+    let (request_id, events, child) = spawn_agent_request(
+        &app,
+        START_CAMERA_PREVIEW_METHOD,
+        "camera-preview",
+        json!({ "cameraId": camera_id, "outputPath": output_path_string }),
+    )?;
+    let line = match wait_for_preview_response(events).await {
+        Ok(line) => line,
+        Err(error) => {
+            let _ = child.kill();
+            return Err(error);
+        }
+    };
+    let result: CameraPreviewStartResult = match parse_agent_result_line(&line, &request_id) {
+        Ok(result) => result,
+        Err(error) => {
+            let _ = child.kill();
+            return Err(error);
+        }
+    };
+    if result.camera_id != camera_id
+        || result.width == 0
+        || result.width > 4096
+        || result.height == 0
+        || result.height > 4096
+        || result.frame_rate == 0
+        || result.frame_rate > 60
+    {
+        let _ = child.kill();
+        return Err(NativeAgentError::protocol());
+    }
+    *state
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(RunningCameraPreview {
+        child,
+        output_path: output_path.clone(),
+    });
+    Ok(CameraPreviewSession {
+        file_path: output_path.to_string_lossy().into_owned(),
+        width: result.width,
+        height: result.height,
+        frame_rate: result.frame_rate,
+    })
+}
+
+#[tauri::command]
+pub(crate) fn stop_camera_preview(state: State<'_, CameraPreviewProcess>) {
+    stop_camera_preview_process(&state);
+}
+
+pub(crate) fn stop_camera_preview_process(state: &CameraPreviewProcess) {
+    if let Some(preview) = state
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .take()
+    {
+        let _ = preview.child.kill();
+        let _ = fs::remove_file(preview.output_path);
+    }
+}
+
+async fn wait_for_preview_response(
+    mut events: Receiver<CommandEvent>,
+) -> Result<Vec<u8>, NativeAgentError> {
+    timeout(CAMERA_PREVIEW_TIMEOUT, async {
+        loop {
+            match events.recv().await {
+                Some(CommandEvent::Stdout(line)) => return Ok(line),
+                Some(CommandEvent::Stderr(_)) => {}
+                Some(CommandEvent::Error(_)) | Some(CommandEvent::Terminated(_)) | None => {
+                    return Err(NativeAgentError::process());
+                }
+                Some(_) => {}
+            }
+        }
+    })
+    .await
+    .map_err(|_| NativeAgentError::process())?
+}
+
+fn camera_preview_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, NativeAgentError> {
+    app.path()
+        .app_cache_dir()
+        .map(|directory| directory.join(CAMERA_PREVIEW_FILE))
+        .map_err(|_| NativeAgentError::process())
+}
+
 async fn mutate_camera<R: Runtime>(
     app: &AppHandle<R>,
     method: &str,
@@ -263,7 +402,6 @@ fn invalid_camera(camera: &CameraDevice) -> bool {
         || camera.id.len() > 1024
         || camera.name.trim().is_empty()
         || camera.name.len() > 512
-        || camera.formats.is_empty()
         || camera.formats.len() > 512
         || camera.formats.iter().any(|format| {
             format.width == 0

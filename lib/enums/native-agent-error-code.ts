@@ -9,4 +9,6 @@ export enum NativeAgentErrorCode {
   Spawn = "spawn",
   Terminated = "terminated",
   Write = "write",
+  PermissionDenied = "permission_denied",
+  CameraInUse = "camera_in_use",
 }

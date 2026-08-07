@@ -29,3 +29,10 @@ export interface CameraDiscovery {
   readonly cameras: readonly Camera[];
   readonly preferredCameraId: string | null;
 }
+
+export interface CameraPreviewSession {
+  readonly filePath: string;
+  readonly frameRate: number;
+  readonly height: number;
+  readonly width: number;
+}

@@ -12,6 +12,7 @@ export function PeripheralScreen(): React.ReactNode {
   return <main className="px-4 py-8 sm:px-6 lg:px-8"><div className="mx-auto max-w-7xl">
     <div className="flex flex-col justify-between gap-6 xl:flex-row xl:items-end"><div className="max-w-3xl"><Badge tone={BadgeTone.Success}>{m.realDataLabel}</Badge><p className="mt-4 font-[family-name:var(--font-commit-mono)] text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">{m.eyebrow}</p><h2 className="mt-3 text-3xl font-semibold sm:text-4xl">{m.title}</h2><p className="mt-3 text-sm text-zinc-500">{m.description}</p><p className="mt-3 text-xs text-zinc-500">{m.inputMonitoring}: {inputMonitoring === "authorized" ? m.inputMonitoringAuthorized : m.inputMonitoringGuidance}</p></div>
     <Button disabled={refreshing || state === PeripheralDiscoveryState.Loading} onClick={refresh} variant={ButtonVariant.Secondary}><RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />{refreshing ? m.refreshing : m.refresh}</Button></div>
+    <p className="mt-4 text-xs leading-5 text-zinc-500">{m.lightingLimitation}</p>
     <p aria-live="polite" className="mt-5 min-h-5 text-sm" role="status">{refreshing ? m.refreshing : ""}</p>
     {state === PeripheralDiscoveryState.Loading ? <Panel className="mt-4 grid min-h-80 place-items-center"><Spinner label={m.loading} /></Panel> : null}
     {state === PeripheralDiscoveryState.Ready && !peripherals.length ? <Panel className="mt-4"><EmptyState description={m.emptyDescription} icon={Unplug} title={m.emptyTitle} /></Panel> : null}

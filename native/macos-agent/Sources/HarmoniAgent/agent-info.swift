@@ -110,6 +110,24 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
         watchCameraDeviceEvents()
     }
 
+    if request.method == "camera.startPreview" {
+        guard let cameraID = request.params.cameraId,
+              let outputPath = request.params.outputPath
+        else {
+            return .response(makeErrorResponse(
+                id: request.id,
+                code: "invalid_argument",
+                message: "Camera id and preview output path are required."
+            ))
+        }
+        switch CameraPreviewManager.shared.start(cameraID: cameraID, outputPath: outputPath) {
+        case let .success(result):
+            return .response(.result(id: request.id, value: .previewStart(result)))
+        case let .failure(error):
+            return .response(makeErrorResponse(id: request.id, code: error.code, message: error.message))
+        }
+    }
+
     if request.method == "camera.setZoom" {
         return cameraMutationOutput(request: request) {
             setCameraZoom(stableID: $0, value: $1)
@@ -124,6 +142,13 @@ func handleRequest(_ request: RequestEnvelope) -> AgentOutput {
 
     if request.method == "hid.devices" {
         return .response(.result(id: request.id, value: .hidDevices(discoverHidDevices())))
+    }
+
+    if request.method == "hid.lightingDiagnostics" {
+        return .response(.result(
+            id: request.id,
+            value: .lightingDiagnostics(discoverLightingDiagnostics())
+        ))
     }
 
     if request.method == "hid.watchDeviceEvents" {
