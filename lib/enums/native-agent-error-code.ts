@@ -6,4 +6,7 @@ export enum NativeAgentErrorCode {
   Timeout = "timeout",
   Protocol = "protocol",
   Process = "process",
+  Spawn = "spawn",
+  Terminated = "terminated",
+  Write = "write",
 }

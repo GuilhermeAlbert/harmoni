@@ -6,10 +6,8 @@
 
 # Harmoni
 
-Harmoni is a private macOS desktop application for centralized device and
-peripheral management. It will progressively list and control audio devices,
-cameras, keyboards, mice, and reusable setup profiles through one desktop
-interface.
+Harmoni is a macOS desktop application for centralized audio, camera,
+peripheral, permission, and local profile management.
 
 ## Planned architecture
 
@@ -41,11 +39,37 @@ Framework and application scripts will be added only by the specifications that
 introduce their corresponding toolchains. This foundation intentionally has no
 dependencies, application source directories, or placeholder build commands.
 
-## Current stage
+## Local development
 
-The repository currently contains project metadata and toolchain policy only.
-The Next.js application, Tauri host, Rust commands, Swift package, workflows,
-and production UI belong to later specifications.
+```bash
+yarn install --frozen-lockfile
+yarn tauri dev
+```
+
+The static frontend can be validated with `yarn lint` and `yarn build`. The
+native layers can be validated with `cargo test --manifest-path
+src-tauri/Cargo.toml` and `yarn native:build`.
+
+## Versions and macOS packages
+
+The version must match in `package.json`, `src-tauri/Cargo.toml`,
+`src-tauri/tauri.conf.json`, and the Swift agent. Run `yarn version:check`
+before creating a tag.
+
+Pull requests run frontend, Rust, and Swift validation on macOS. A GitHub
+Release is created only when an explicit `v<version>` tag is pushed, for
+example `v0.1.0`. A tag whose version differs from the application files fails
+before packaging.
+
+Tagged builds attach an architecture-native DMG, a zipped `.app`, and a
+`SHA256SUMS.txt` file. Apple Silicon is the recommended initial distribution
+target; the workflow does not promise a separate x86_64 artifact.
+
+Signing and notarization are conditional. Configure `APPLE_CERTIFICATE`,
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
+`APPLE_PASSWORD`, and `APPLE_TEAM_ID` as GitHub Actions secrets to enable the
+Tauri signing flow. Without the complete secret set, artifacts are unsigned
+and macOS Gatekeeper may require users to approve them manually.
 
 ## Development principles
 

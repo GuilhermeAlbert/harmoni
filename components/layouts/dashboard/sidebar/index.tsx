@@ -3,10 +3,7 @@ import { X } from "lucide-react";
 import type { DashboardSidebarProps } from "./types";
 import { Brand } from "@/components/brand";
 import { IconButton } from "@/components/icon-button";
-import { LanguageSelector } from "@/components/language-selector";
 import { DashboardNavigation } from "@/components/layouts/dashboard/navigation";
-import { NativeAgentStatus } from "@/components/layouts/dashboard/native-agent-status";
-import { ThemeSelector } from "@/components/theme-selector";
 
 export function DashboardSidebar({
   className = "",
@@ -17,7 +14,7 @@ export function DashboardSidebar({
 }: DashboardSidebarProps): React.ReactNode {
   return (
     <aside
-      className={`flex min-h-screen w-60 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-white/[0.07] dark:bg-[#0c0c0c] ${className}`}
+      className={`flex h-dvh min-h-0 w-60 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-white/[0.07] dark:bg-[#0c0c0c] ${className}`}
     >
       <div className="flex items-start justify-between gap-3 px-5 py-6">
         <Brand />
@@ -39,12 +36,6 @@ export function DashboardSidebar({
           onNavigate={onNavigate}
           pathname={pathname}
         />
-      </div>
-
-      <div className="mt-auto grid gap-5 border-t border-zinc-200 p-4 dark:border-white/[0.07]">
-        <NativeAgentStatus />
-        <LanguageSelector />
-        <ThemeSelector />
       </div>
     </aside>
   );

@@ -33,7 +33,7 @@ func readPermissionStatus() -> PermissionStatusResult {
         PermissionStatusItem(
             id: "accessibility-permission",
             category: "accessibility",
-            status: AXIsProcessTrusted() ? "authorized" : "unknown"
+            status: AXIsProcessTrusted() ? "authorized" : "not-granted"
         ),
         PermissionStatusItem(
             id: "input-monitoring-permission",
@@ -86,7 +86,7 @@ private func mediaAuthorizationStatus(for mediaType: AVMediaType) -> String {
 
 private func inputMonitoringStatus() -> String {
     if #available(macOS 10.15, *) {
-        return CGPreflightListenEventAccess() ? "authorized" : "unknown"
+        return CGPreflightListenEventAccess() ? "authorized" : "not-granted"
     }
 
     return "unsupported"

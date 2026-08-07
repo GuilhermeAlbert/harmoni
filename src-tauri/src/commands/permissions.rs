@@ -23,6 +23,7 @@ pub(crate) enum PermissionCategory {
 pub(crate) enum PermissionStatus {
     Authorized,
     Denied,
+    NotGranted,
     NotDetermined,
     Restricted,
     Unsupported,
@@ -111,7 +112,10 @@ impl PermissionCategory {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_permission_status, PermissionCategory};
+    use super::{
+        get_permission_status, parse_permission_status, PermissionCategory, PermissionStatus,
+    };
+    use crate::sidecar::AgentOutput;
 
     #[test]
     fn returns_all_real_permission_categories_without_prompting() {
@@ -137,5 +141,24 @@ mod tests {
         assert!(permissions
             .iter()
             .any(|permission| permission.category == PermissionCategory::InputMonitoring));
+    }
+
+    #[test]
+    fn accepts_not_granted_for_boolean_only_permission_apis() {
+        let output = AgentOutput {
+            request_id: "permissions-test".to_owned(),
+            line: br#"{"id":"permissions-test","version":1,"result":{"permissions":[{"id":"camera-permission","category":"camera","status":"denied"},{"id":"microphone-permission","category":"microphone","status":"not-determined"},{"id":"accessibility-permission","category":"accessibility","status":"not-granted"},{"id":"input-monitoring-permission","category":"input-monitoring","status":"not-granted"}]}}"#.to_vec(),
+        };
+
+        let permissions =
+            parse_permission_status(&output).expect("permission payload should parse");
+
+        assert_eq!(
+            permissions
+                .iter()
+                .filter(|permission| matches!(permission.status, PermissionStatus::NotGranted))
+                .count(),
+            2
+        );
     }
 }

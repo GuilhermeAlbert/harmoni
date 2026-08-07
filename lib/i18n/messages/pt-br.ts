@@ -409,27 +409,16 @@ export const PT_BR_MESSAGES = {
     macOSVersion: "Versão do macOS",
     architecture: "Arquitetura",
     protocolVersion: "Versão do protocolo",
-    developmentEvent: {
-      label: "Evento de desenvolvimento",
-      trigger: "Emitir evento simulado",
-      triggering: "Emitindo evento simulado",
-      waiting: "Nenhum evento de desenvolvimento recebido.",
-      error: "Não foi possível receber o evento de desenvolvimento.",
-      categories: {
-        audio: "Áudio",
-        peripheral: "Periférico",
-        "audio-input": "Entrada de áudio",
-        "audio-output": "Saída de áudio",
-        camera: "Câmera",
-        keyboard: "Teclado",
-        mouse: "Mouse",
-        trackpad: "Trackpad",
-      },
-      changes: {
-        changed: "Alterado",
-        connected: "Conectado",
-        disconnected: "Desconectado",
-      },
+    watchers: {
+      audio: "Monitor de áudio",
+      camera: "Monitor de câmera",
+      peripheral: "Monitor de periféricos",
+    },
+    watcherStates: {
+      retrying: "Tentando novamente",
+      running: "Em execução",
+      stopped: "Parado",
+      stopping: "Encerrando",
     },
   },
   settingsScreen: {
@@ -446,7 +435,7 @@ export const PT_BR_MESSAGES = {
     launchAtLoginDescription: "Inicie o Harmoni automaticamente com o macOS.",
     simulatedControl: "Controle simulado",
     permissionsTitle: "Permissões do sistema",
-    permissionsDescription: "Estado somente leitura do macOS. Abrir esta tela nunca solicita permissão.",
+    permissionsDescription: "Estado somente leitura do macOS. Abrir esta tela nunca solicita permissão. Acessibilidade e Monitoramento de Entrada podem informar apenas se o acesso está concedido no momento.",
     categories: {
       accessibility: "Acessibilidade",
       camera: "Câmera",
@@ -456,6 +445,7 @@ export const PT_BR_MESSAGES = {
     statuses: {
       authorized: "Autorizada",
       denied: "Negada",
+      notGranted: "Não concedida",
       notDetermined: "Não determinada",
       restricted: "Restrita",
       unsupported: "Não compatível",
@@ -475,8 +465,8 @@ export const PT_BR_MESSAGES = {
     openingSettings: "Abrindo Ajustes",
     reviewOpened: "O painel de privacidade selecionado foi aberto nos Ajustes do Sistema.",
     reviewError: "Não foi possível abrir o painel de privacidade selecionado.",
-    appInfoTitle: "Informações do aplicativo",
-    appInfoDescription: "Versões reais informadas pela integração nativa.",
+    appInfoTitle: "Diagnóstico",
+    appInfoDescription: "Versões do aplicativo e do agente nativo informadas pela integração local.",
     feedback: {
       launchEnabled: "Abertura ao iniciar sessão ativada somente nesta simulação.",
       launchDisabled: "Abertura ao iniciar sessão desativada somente nesta simulação.",

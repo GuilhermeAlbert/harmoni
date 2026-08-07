@@ -10,6 +10,8 @@
     "build": "next build",
     "lint": "eslint .",
     "native:build": "sh native/macos-agent/build-sidecar.sh",
+    "package:mac": "tauri build --bundles app,dmg",
+    "version:check": "node -e \"const fs=require('fs');const p=require('./package.json').version;const cargo=fs.readFileSync('src-tauri/Cargo.toml','utf8').match(/^version = \\\"([^\\\"]+)\\\"/m)?.[1];const tauri=require('./src-tauri/tauri.conf.json').version;const swift=fs.readFileSync('native/macos-agent/Sources/HarmoniAgent/agent-info.swift','utf8').match(/AGENT_VERSION = \\\"([^\\\"]+)\\\"/)?.[1];const release=process.env.RELEASE_VERSION;if([cargo,tauri,swift].some(v=>v!==p)||(release&&release!==p)){console.error('Version mismatch',{package:p,cargo,tauri,swift,release});process.exit(1)}console.log('Version '+p+' is consistent')\"",
     "tauri": "tauri"
   },
   "engines": {

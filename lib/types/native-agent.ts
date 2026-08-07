@@ -6,7 +6,14 @@ export type AgentHealth = {
   agentVersion: string;
   macOSVersion: string;
   architecture: string;
+  watchers: {
+    audio: WatcherState;
+    camera: WatcherState;
+    peripheral: WatcherState;
+  };
 };
+
+export type WatcherState = "retrying" | "running" | "stopped" | "stopping";
 
 export type NativeAgentError = Error & {
   code: NativeAgentErrorCode;

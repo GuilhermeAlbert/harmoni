@@ -406,27 +406,16 @@ export const EN_MESSAGES = {
     macOSVersion: "macOS version",
     architecture: "Architecture",
     protocolVersion: "Protocol version",
-    developmentEvent: {
-      label: "Development event",
-      trigger: "Emit simulated event",
-      triggering: "Emitting simulated event",
-      waiting: "No development event received yet.",
-      error: "The development event could not be received.",
-      categories: {
-        audio: "Audio",
-        peripheral: "Peripheral",
-        "audio-input": "Audio input",
-        "audio-output": "Audio output",
-        camera: "Camera",
-        keyboard: "Keyboard",
-        mouse: "Mouse",
-        trackpad: "Trackpad",
-      },
-      changes: {
-        changed: "Changed",
-        connected: "Connected",
-        disconnected: "Disconnected",
-      },
+    watchers: {
+      audio: "Audio watcher",
+      camera: "Camera watcher",
+      peripheral: "Peripheral watcher",
+    },
+    watcherStates: {
+      retrying: "Retrying",
+      running: "Running",
+      stopped: "Stopped",
+      stopping: "Stopping",
     },
   },
   settingsScreen: {
@@ -443,7 +432,7 @@ export const EN_MESSAGES = {
     launchAtLoginDescription: "Start Harmoni automatically with macOS.",
     simulatedControl: "Simulated control",
     permissionsTitle: "System permissions",
-    permissionsDescription: "Read-only status from macOS. Opening this screen never requests permission.",
+    permissionsDescription: "Read-only status from macOS. Opening this screen never requests permission. Accessibility and Input Monitoring may only report whether access is currently granted.",
     categories: {
       accessibility: "Accessibility",
       camera: "Camera",
@@ -453,6 +442,7 @@ export const EN_MESSAGES = {
     statuses: {
       authorized: "Authorized",
       denied: "Denied",
+      notGranted: "Not granted",
       notDetermined: "Not determined",
       restricted: "Restricted",
       unsupported: "Unsupported",
@@ -472,8 +462,8 @@ export const EN_MESSAGES = {
     openingSettings: "Opening Settings",
     reviewOpened: "The selected privacy pane was opened in System Settings.",
     reviewError: "The selected privacy pane could not be opened.",
-    appInfoTitle: "Application information",
-    appInfoDescription: "Real versions reported through the native integration.",
+    appInfoTitle: "Diagnostics",
+    appInfoDescription: "Application and native-agent versions reported by the local integration.",
     feedback: {
       launchEnabled: "Launch at login enabled only in this simulation.",
       launchDisabled: "Launch at login disabled only in this simulation.",

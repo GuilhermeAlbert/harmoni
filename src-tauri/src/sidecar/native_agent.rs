@@ -32,7 +32,7 @@ pub(crate) struct AgentHealth {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct NativeAgentError {
     code: NativeAgentErrorCode,
-    message: &'static str,
+    message: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -41,10 +41,12 @@ enum NativeAgentErrorCode {
     InvalidArgument,
     NotFound,
     Unsupported,
-    Unavailable,
     Timeout,
     Protocol,
     Process,
+    Spawn,
+    Terminated,
+    Write,
 }
 
 #[derive(Serialize)]
@@ -109,8 +111,9 @@ pub(crate) async fn request_agent_output<R: Runtime>(
             match events.recv().await {
                 Some(CommandEvent::Stdout(line)) => return Ok(line),
                 Some(CommandEvent::Stderr(_)) => {}
-                Some(CommandEvent::Error(_)) | Some(CommandEvent::Terminated(_)) | None => {
-                    return Err(NativeAgentError::process());
+                Some(CommandEvent::Error(_)) => return Err(NativeAgentError::terminated()),
+                Some(CommandEvent::Terminated(_)) | None => {
+                    return Err(NativeAgentError::terminated());
                 }
                 Some(_) => {}
             }
@@ -132,17 +135,25 @@ pub(crate) fn spawn_agent_request<R: Runtime>(
 ) -> Result<(String, Receiver<CommandEvent>, CommandChild), NativeAgentError> {
     let request_id = make_request_id(request_prefix)?;
     let request = encode_request(&request_id, method, params)?;
-    let command = app
-        .shell()
-        .sidecar(AGENT_SIDECAR)
-        .map_err(|_| NativeAgentError::unavailable())?;
-    let (events, mut child) = command
-        .spawn()
-        .map_err(|_| NativeAgentError::unavailable())?;
+    let command = app.shell().sidecar(AGENT_SIDECAR).map_err(|_| {
+        eprintln!(
+            "native-agent spawn configuration failed: sidecar={AGENT_SIDECAR} architecture={}",
+            std::env::consts::ARCH
+        );
+        NativeAgentError::spawn()
+    })?;
+    let (events, mut child) = command.spawn().map_err(|_| {
+        eprintln!(
+            "native-agent spawn failed: sidecar={AGENT_SIDECAR} architecture={}",
+            std::env::consts::ARCH
+        );
+        NativeAgentError::spawn()
+    })?;
 
     if child.write(request.as_bytes()).is_err() || child.write(b"\n").is_err() {
         let _ = child.kill();
-        return Err(NativeAgentError::process());
+        eprintln!("native-agent request write failed: sidecar={AGENT_SIDECAR} method={method}");
+        return Err(NativeAgentError::write());
     }
 
     Ok((request_id, events, child))
@@ -199,16 +210,7 @@ fn parse_agent_result_line<Payload: DeserializeOwned>(
 
     match (response.result, response.error) {
         (Some(result), None) => Ok(result),
-        (None, Some(error)) => {
-            let _ = error.message;
-            Err(match error.code.as_str() {
-                "invalid_argument" => NativeAgentError::invalid_argument(),
-                "not_found" => NativeAgentError::not_found(),
-                "unsupported" => NativeAgentError::unsupported(),
-                "process" => NativeAgentError::process(),
-                _ => NativeAgentError::protocol(),
-            })
-        }
+        (None, Some(error)) => Err(NativeAgentError::from_agent(error)),
         _ => Err(NativeAgentError::protocol()),
     }
 }
@@ -218,8 +220,8 @@ fn normalize_health(
     app_version: String,
 ) -> Result<AgentHealth, NativeAgentError> {
     if result.protocol_version != PROTOCOL_VERSION
-        || result.agent_version.is_empty()
-        || result.architecture.is_empty()
+        || result.agent_version != app_version
+        || result.architecture != expected_agent_architecture()
         || result.mac_os_version.is_empty()
         || result.process_identifier <= 0
         || app_version.is_empty()
@@ -236,60 +238,111 @@ fn normalize_health(
     })
 }
 
-impl NativeAgentError {
-    fn unavailable() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Unavailable,
-            message: "The native agent is unavailable.",
-        }
+fn expected_agent_architecture() -> &'static str {
+    match std::env::consts::ARCH {
+        "aarch64" => "arm64",
+        architecture => architecture,
     }
+}
 
+impl NativeAgentError {
     fn timeout() -> Self {
         Self {
             code: NativeAgentErrorCode::Timeout,
-            message: "The native agent did not respond in time.",
+            message: "The native agent did not respond in time.".to_owned(),
         }
     }
 
     pub(crate) fn protocol() -> Self {
         Self {
             code: NativeAgentErrorCode::Protocol,
-            message: "The native agent returned an invalid response.",
+            message: "The native agent returned an invalid response.".to_owned(),
         }
     }
 
     pub(crate) fn process() -> Self {
         Self {
             code: NativeAgentErrorCode::Process,
-            message: "The native agent process failed.",
+            message: "The native operation was rejected.".to_owned(),
         }
     }
 
     pub(crate) fn invalid_argument() -> Self {
         Self {
             code: NativeAgentErrorCode::InvalidArgument,
-            message: "The audio mutation arguments are invalid.",
+            message: "The native operation arguments are invalid.".to_owned(),
         }
     }
 
     pub(crate) fn not_found() -> Self {
         Self {
             code: NativeAgentErrorCode::NotFound,
-            message: "The requested audio device was not found.",
+            message: "The requested native device was not found.".to_owned(),
         }
     }
 
     pub(crate) fn unsupported() -> Self {
         Self {
             code: NativeAgentErrorCode::Unsupported,
-            message: "The requested audio control is unsupported.",
+            message: "The requested native control is unsupported.".to_owned(),
         }
     }
+
+    fn spawn() -> Self {
+        Self {
+            code: NativeAgentErrorCode::Spawn,
+            message: "The bundled native agent could not be started.".to_owned(),
+        }
+    }
+
+    fn write() -> Self {
+        Self {
+            code: NativeAgentErrorCode::Write,
+            message: "The request could not be sent to the native agent.".to_owned(),
+        }
+    }
+
+    fn terminated() -> Self {
+        Self {
+            code: NativeAgentErrorCode::Terminated,
+            message: "The native agent terminated before responding.".to_owned(),
+        }
+    }
+
+    fn from_agent(error: AgentProtocolError) -> Self {
+        let Some(message) = safe_agent_message(&error.message) else {
+            return match error.code.as_str() {
+                "invalid_argument" => Self::invalid_argument(),
+                "not_found" => Self::not_found(),
+                "unsupported" => Self::unsupported(),
+                "process" => Self::process(),
+                _ => Self::protocol(),
+            };
+        };
+        let code = match error.code.as_str() {
+            "invalid_argument" => NativeAgentErrorCode::InvalidArgument,
+            "not_found" => NativeAgentErrorCode::NotFound,
+            "unsupported" => NativeAgentErrorCode::Unsupported,
+            "process" => NativeAgentErrorCode::Process,
+            _ => return Self::protocol(),
+        };
+        Self { code, message }
+    }
+}
+
+fn safe_agent_message(message: &str) -> Option<String> {
+    let trimmed = message.trim();
+    if trimmed.is_empty() || trimmed.len() > 256 || trimmed.chars().any(char::is_control) {
+        return None;
+    }
+    Some(trimmed.to_owned())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{fetch_agent_health, parse_response, NativeAgentErrorCode};
+    use super::{
+        fetch_agent_health, parse_agent_result, parse_response, AgentOutput, NativeAgentErrorCode,
+    };
 
     #[test]
     fn returns_health_through_the_real_sidecar_transport() {
@@ -358,5 +411,80 @@ mod tests {
             .expect_err("uncorrelated response should fail");
 
         assert!(matches!(error.code, NativeAgentErrorCode::Protocol));
+    }
+
+    #[test]
+    fn rejects_a_sidecar_for_another_architecture() {
+        let other_architecture = if std::env::consts::ARCH == "aarch64" {
+            "x86_64"
+        } else {
+            "arm64"
+        };
+        let response = format!(
+            r#"{{
+            "id":"health-test",
+            "version":1,
+            "result":{{
+                "agentVersion":"0.1.0",
+                "architecture":"{other_architecture}",
+                "macOSVersion":"Version 26.0",
+                "processIdentifier":123,
+                "protocolVersion":1
+            }}
+        }}"#
+        );
+
+        let error = parse_response(response.as_bytes(), "health-test", "0.1.0".to_owned())
+            .expect_err("wrong-architecture sidecar should fail health validation");
+
+        assert!(matches!(error.code, NativeAgentErrorCode::Protocol));
+    }
+
+    #[test]
+    fn rejects_a_stale_sidecar_version() {
+        let response = br#"{
+            "id":"health-test",
+            "version":1,
+            "result":{
+                "agentVersion":"0.0.9",
+                "architecture":"arm64",
+                "macOSVersion":"Version 26.0",
+                "processIdentifier":123,
+                "protocolVersion":1
+            }
+        }"#;
+
+        let error = parse_response(response, "health-test", "0.1.0".to_owned())
+            .expect_err("stale sidecar should fail health validation");
+
+        assert!(matches!(error.code, NativeAgentErrorCode::Protocol));
+    }
+
+    #[test]
+    fn preserves_a_safe_correlated_agent_error() {
+        let output = AgentOutput {
+            request_id: "mutation-test".to_owned(),
+            line: br#"{"id":"mutation-test","version":1,"error":{"code":"unsupported","message":"This camera does not expose zoom control."}}"#.to_vec(),
+        };
+
+        let error = parse_agent_result::<serde_json::Value>(&output)
+            .expect_err("agent rejection should remain an error");
+
+        assert!(matches!(error.code, NativeAgentErrorCode::Unsupported));
+        assert_eq!(error.message, "This camera does not expose zoom control.");
+    }
+
+    #[test]
+    fn rejects_unsafe_agent_error_text() {
+        let output = AgentOutput {
+            request_id: "mutation-test".to_owned(),
+            line: b"{\"id\":\"mutation-test\",\"version\":1,\"error\":{\"code\":\"process\",\"message\":\"unsafe\\nmessage\"}}".to_vec(),
+        };
+
+        let error = parse_agent_result::<serde_json::Value>(&output)
+            .expect_err("agent rejection should remain an error");
+
+        assert!(matches!(error.code, NativeAgentErrorCode::Process));
+        assert_eq!(error.message, "The native operation was rejected.");
     }
 }

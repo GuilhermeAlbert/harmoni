@@ -1,4 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import type { PermissionCategory } from "@/lib/enums/permission-category";
 import { NativeAgentErrorCode } from "@/lib/enums/native-agent-error-code";
@@ -28,6 +30,15 @@ export async function openPermissionSettings(
   } catch (cause: unknown) {
     throw createNativeAgentError(cause);
   }
+}
+
+export async function subscribeToPermissionWindowFocus(
+  onFocus: () => void,
+): Promise<UnlistenFn> {
+  assertNativeEnvironment();
+  return getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+    if (focused) onFocus();
+  });
 }
 
 function assertNativeEnvironment(): void {

@@ -26,7 +26,9 @@ import { PermissionStatus } from "@/lib/enums/permission-status";
 import {
   getPermissionStatus,
   openPermissionSettings,
+  subscribeToPermissionWindowFocus,
 } from "@/lib/services/permissions";
+import { createNativeAgentError } from "@/lib/services/native-agent";
 import type { Permission } from "@/lib/types/permission";
 
 const PERMISSION_ICONS: Record<PermissionCategory, LucideIcon> = {
@@ -52,6 +54,7 @@ const STATUS_MESSAGE_KEYS: Record<
 > = {
   [PermissionStatus.Authorized]: "authorized",
   [PermissionStatus.Denied]: "denied",
+  [PermissionStatus.NotGranted]: "notGranted",
   [PermissionStatus.NotDetermined]: "notDetermined",
   [PermissionStatus.Restricted]: "restricted",
   [PermissionStatus.Unsupported]: "unsupported",
@@ -61,6 +64,7 @@ const STATUS_MESSAGE_KEYS: Record<
 const STATUS_TONES: Record<PermissionStatus, BadgeTone> = {
   [PermissionStatus.Authorized]: BadgeTone.Success,
   [PermissionStatus.Denied]: BadgeTone.Danger,
+  [PermissionStatus.NotGranted]: BadgeTone.Warning,
   [PermissionStatus.NotDetermined]: BadgeTone.Warning,
   [PermissionStatus.Restricted]: BadgeTone.Danger,
   [PermissionStatus.Unsupported]: BadgeTone.Neutral,
@@ -72,12 +76,14 @@ export function PermissionSummary({
 }: PermissionSummaryProps): React.ReactNode {
   const [attempt, setAttempt] = useState(0);
   const [feedback, setFeedback] = useState("");
+  const [loadError, setLoadError] = useState<string>();
   const [loadFailed, setLoadFailed] = useState(false);
   const [permissions, setPermissions] = useState<readonly Permission[] | null>(
     null,
   );
   const [reviewingCategory, setReviewingCategory] =
     useState<PermissionCategory | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const loading = permissions === null && !loadFailed;
 
   useEffect(() => {
@@ -90,14 +96,19 @@ export function PermissionSummary({
         }
 
         setPermissions(nextPermissions);
+        setLoadError(undefined);
+        setLoadFailed(false);
+        setRefreshing(false);
         setFeedback(messages.permissionsLoaded);
       })
-      .catch(() => {
+      .catch((cause: unknown) => {
         if (!active) {
           return;
         }
 
+        setLoadError(createNativeAgentError(cause).message);
         setLoadFailed(true);
+        setRefreshing(false);
         setFeedback(messages.permissionsLoadError);
       });
 
@@ -106,10 +117,36 @@ export function PermissionSummary({
     };
   }, [attempt, messages.permissionsLoadError, messages.permissionsLoaded]);
 
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+
+    subscribeToPermissionWindowFocus(() => {
+      if (active) {
+        setFeedback("");
+        setLoadError(undefined);
+        setLoadFailed(false);
+        setRefreshing(true);
+        setAttempt((currentAttempt) => currentAttempt + 1);
+      }
+    })
+      .then((nextUnsubscribe) => {
+        if (active) unsubscribe = nextUnsubscribe;
+        else nextUnsubscribe();
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, []);
+
   const refresh = (): void => {
     setFeedback("");
+    setLoadError(undefined);
     setLoadFailed(false);
-    setPermissions(null);
+    setRefreshing(true);
     setAttempt((currentAttempt) => currentAttempt + 1);
   };
 
@@ -139,17 +176,17 @@ export function PermissionSummary({
           </p>
         </div>
         <Button
-          disabled={loading}
+          disabled={loading || refreshing}
           onClick={refresh}
           size={ButtonSize.Small}
           variant={ButtonVariant.Secondary}
         >
-          {loading ? (
+          {loading || refreshing ? (
             <Spinner label={messages.refreshingPermissions} size={SpinnerSize.Small} />
           ) : (
             <RefreshCw aria-hidden="true" className="size-3.5" />
           )}
-          {loading ? messages.refreshingPermissions : messages.refreshPermissions}
+          {loading || refreshing ? messages.refreshingPermissions : messages.refreshPermissions}
         </Button>
       </header>
 
@@ -181,7 +218,7 @@ export function PermissionSummary({
       {loadFailed ? (
         <div className="grid justify-items-center pb-6" role="alert">
           <EmptyState
-            description={messages.errorDescription}
+            description={loadError ?? messages.errorDescription}
             icon={AlertTriangle}
             title={messages.errorTitle}
           />

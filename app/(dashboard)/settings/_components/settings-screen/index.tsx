@@ -144,7 +144,7 @@ export function SettingsScreen(): React.ReactNode {
               ) : null}
 
               {state === NativeAgentState.Ready && health ? (
-                <dl className="grid flex-1 gap-4 text-sm sm:grid-cols-2 xl:grid-cols-5">
+                <dl className="grid flex-1 gap-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <dt className="text-xs text-zinc-500">
                       {nativeMessages.appVersion}
@@ -183,6 +183,16 @@ export function SettingsScreen(): React.ReactNode {
                       {health.protocolVersion}
                     </dd>
                   </div>
+                  {Object.entries(health.watchers).map(([category, watcherState]) => (
+                    <div key={category}>
+                      <dt className="text-xs text-zinc-500">
+                        {nativeMessages.watchers[category as keyof typeof nativeMessages.watchers]}
+                      </dt>
+                      <dd className="mt-1 font-medium">
+                        {nativeMessages.watcherStates[watcherState]}
+                      </dd>
+                    </div>
+                  ))}
                 </dl>
               ) : null}
 
