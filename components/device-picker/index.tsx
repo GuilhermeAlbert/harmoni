@@ -20,7 +20,7 @@ export function DevicePicker({
         title={options.find((option) => option.value === value)?.label ?? placeholder}
         value={value}
       >
-        {value === "" ? <option value="">{placeholder}</option> : null}
+        <option value="">{placeholder}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

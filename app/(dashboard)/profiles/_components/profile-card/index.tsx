@@ -28,15 +28,20 @@ export function ProfileCard({
   const inputName =
     audioDevices.find(
       (device) => device.id === profile.preferences.audioInputId,
-    )?.name ?? profile.preferences.audioInputId;
+    )?.name ?? (profile.preferences.audioInputId ? messages.missingDevice : messages.notRequested);
   const outputName =
     audioDevices.find(
       (device) => device.id === profile.preferences.audioOutputId,
-    )?.name ?? profile.preferences.audioOutputId;
+    )?.name ?? (profile.preferences.audioOutputId ? messages.missingDevice : messages.notRequested);
   const cameraName =
     cameras.find(
       (camera) => camera.id === profile.preferences.cameraId,
-    )?.name ?? profile.preferences.cameraId;
+    )?.name ?? (profile.preferences.cameraId ? messages.missingDevice : messages.notRequested);
+  const hasMissingDevice = Boolean(
+    (profile.preferences.audioInputId && !audioDevices.some((item) => item.id === profile.preferences.audioInputId))
+    || (profile.preferences.audioOutputId && !audioDevices.some((item) => item.id === profile.preferences.audioOutputId))
+    || (profile.preferences.cameraId && !cameras.some((item) => item.id === profile.preferences.cameraId)),
+  );
 
   return (
     <Panel className={`flex h-full flex-col p-5 ${profile.active ? "ring-1 ring-zinc-950 dark:ring-zinc-50" : ""}`}>
@@ -86,26 +91,20 @@ export function ProfileCard({
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-500">
-        <span>{messages.preferences.inputVolume}: {profile.preferences.inputVolume}%</span>
-        <span aria-hidden="true">·</span>
-        <span>
+        {profile.preferences.inputVolume !== undefined ? <span>{messages.preferences.inputVolume}: {profile.preferences.inputVolume}%</span> : null}
+        {profile.preferences.microphonesMuted !== undefined ? <span>
           {profile.preferences.microphonesMuted
             ? messages.preferences.microphonesMuted
             : messages.preferences.microphonesLive}
-        </span>
-        <span aria-hidden="true">·</span>
-        <span>
-          {profile.preferences.cameraEnabled
-            ? messages.preferences.cameraEnabled
-            : messages.preferences.cameraDisabled}
-        </span>
+        </span> : null}
+        {profile.preferences.stopCameraPreview ? <span>{messages.preferences.stopCameraPreview}</span> : null}
       </div>
 
       {outcome ? (
         <ul className="mt-4 grid gap-1 border-t border-zinc-200 pt-4 text-xs dark:border-white/[0.08]" aria-label={messages.outcome}>
           {outcome.operations.map((operation) => (
-            <li className={operation.status === "success" ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"} key={operation.operation}>
-              {messages.operations[operation.operation as keyof typeof messages.operations] ?? operation.operation}: {operation.status === "success" ? messages.succeeded : operation.error?.message ?? messages.failed}
+            <li className={operation.status === "success" ? "text-emerald-700 dark:text-emerald-300" : operation.status === "failed" || operation.status === "missing-device" ? "text-red-700 dark:text-red-300" : "text-zinc-500"} key={operation.operation}>
+              {messages.operations[operation.operation as keyof typeof messages.operations] ?? operation.operation}: {operation.error?.message ?? messages.operationStatuses[operation.status]}
             </li>
           ))}
         </ul>
@@ -126,7 +125,7 @@ export function ProfileCard({
           size={ButtonSize.Small}
           variant={ButtonVariant.Secondary}
         >
-          {messages.edit}
+          {hasMissingDevice ? messages.repair : messages.edit}
         </Button>
       </div>
     </Panel>

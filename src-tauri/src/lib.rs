@@ -38,6 +38,7 @@ pub fn run() {
             commands::permissions::get_permission_status,
             commands::permissions::open_permission_settings,
             commands::profiles::get_profiles,
+            commands::profiles::export_profiles_recovery_copy,
             commands::profiles::save_profile,
             commands::profiles::apply_profile
         ])

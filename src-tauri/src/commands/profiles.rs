@@ -1,26 +1,33 @@
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, State};
 
 use crate::{
     commands::{audio, camera},
     sidecar::NativeAgentError,
-    storage::profiles::{load_store, save_store, seed_store},
+    storage::profiles::{load_or_migrate_store, save_store, seed_store},
 };
 
-pub(crate) const PROFILE_SCHEMA_VERSION: u16 = 1;
+pub(crate) const PROFILE_SCHEMA_VERSION: u16 = 2;
 const PROFILES_FILE: &str = "profiles.json";
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProfilePreferences {
-    pub(crate) audio_input_id: String,
-    pub(crate) audio_output_id: String,
-    pub(crate) camera_id: String,
-    pub(crate) input_volume: u8,
-    pub(crate) microphones_muted: bool,
-    pub(crate) camera_enabled: bool,
+    pub(crate) audio_input_id: Option<String>,
+    #[serde(default)]
+    pub(crate) set_audio_input_default: bool,
+    pub(crate) audio_output_id: Option<String>,
+    pub(crate) camera_id: Option<String>,
+    pub(crate) input_volume: Option<u8>,
+    pub(crate) microphones_muted: Option<bool>,
+    #[serde(default)]
+    pub(crate) stop_camera_preview: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -94,14 +101,22 @@ impl Profile {
                 .as_ref()
                 .is_none_or(|value| value.len() <= 120)
             && matches!(self.origin.as_str(), "seeded" | "local")
-            && self.preferences.input_volume <= 100
+            && self
+                .preferences
+                .input_volume
+                .is_none_or(|value| value <= 100)
             && [
-                &self.preferences.audio_input_id,
-                &self.preferences.audio_output_id,
-                &self.preferences.camera_id,
+                self.preferences.audio_input_id.as_deref(),
+                self.preferences.audio_output_id.as_deref(),
+                self.preferences.camera_id.as_deref(),
             ]
             .iter()
+            .flatten()
             .all(|id| !id.is_empty() && id.len() <= 1024)
+            && (!self.preferences.set_audio_input_default
+                && self.preferences.input_volume.is_none()
+                && self.preferences.microphones_muted.is_none()
+                || self.preferences.audio_input_id.is_some())
     }
 }
 
@@ -111,28 +126,37 @@ pub(crate) async fn get_profiles<R: Runtime>(
 ) -> Result<Vec<Profile>, NativeAgentError> {
     let path = profiles_path(&app)?;
     if path.exists() {
-        return Ok(load_store(&path)?.profiles);
+        return Ok(load_or_migrate_store(&path)?.profiles);
     }
     let devices = audio::get_audio_devices(app.clone()).await?;
     let cameras = camera::get_cameras(app.clone()).await?;
     let input = devices
         .iter()
-        .find(|device| device.is_input() && device.is_default())
-        .or_else(|| devices.iter().find(|device| device.is_input()))
-        .map_or("unavailable:input", |device| device.id());
+        .find(|item| item.is_input() && item.is_default())
+        .or_else(|| devices.iter().find(|item| item.is_input()));
     let output = devices
         .iter()
-        .find(|device| device.is_output() && device.is_default())
-        .or_else(|| devices.iter().find(|device| device.is_output()))
-        .map_or("unavailable:output", |device| device.id());
-    let camera_id = cameras
+        .find(|item| item.is_output() && item.is_default())
+        .or_else(|| devices.iter().find(|item| item.is_output()));
+    let selected_camera = cameras
         .cameras()
         .iter()
-        .find(|camera| camera.preferred())
-        .or_else(|| cameras.cameras().first())
-        .map_or("unavailable:camera", |camera| camera.id());
-    let store = seed_store(&path, input, output, camera_id)?;
-    Ok(store.profiles)
+        .find(|item| item.preferred())
+        .or_else(|| cameras.cameras().first());
+    Ok(seed_store(
+        &path,
+        input.map(|item| {
+            (
+                item.id(),
+                item.can_set_default(),
+                item.can_set_volume(),
+                item.can_set_mute(),
+            )
+        }),
+        output.map(|item| (item.id(), item.can_set_default())),
+        selected_camera.map(|item| item.id()),
+    )?
+    .profiles)
 }
 
 #[tauri::command]
@@ -147,7 +171,7 @@ pub(crate) fn save_profile<R: Runtime>(
         return Err(NativeAgentError::invalid_argument());
     }
     let path = profiles_path(&app)?;
-    let mut store = load_store(&path)?;
+    let mut store = load_or_migrate_store(&path)?;
     if store.active_profile_id.as_deref() == Some(profile.id.as_str()) {
         store.active_profile_id = None;
     }
@@ -161,69 +185,150 @@ pub(crate) fn save_profile<R: Runtime>(
 }
 
 #[tauri::command]
+pub(crate) fn export_profiles_recovery_copy<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<String, NativeAgentError> {
+    let source = profiles_path(&app)?;
+    let bytes = fs::read(&source).map_err(|_| NativeAgentError::process())?;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| NativeAgentError::process())?
+        .as_secs();
+    let destination = source.with_file_name(format!("profiles-recovery-{timestamp}.json"));
+    fs::write(&destination, bytes).map_err(|_| NativeAgentError::process())?;
+    Ok(destination.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
 pub(crate) async fn apply_profile<R: Runtime>(
     app: AppHandle<R>,
+    preview: State<'_, camera::CameraPreviewProcess>,
     profile_id: String,
 ) -> Result<ProfileApplicationResult, NativeAgentError> {
     let path = profiles_path(&app)?;
-    let mut store = load_store(&path)?;
+    let mut store = load_or_migrate_store(&path)?;
     let profile = store
         .profiles
         .iter()
-        .find(|profile| profile.id == profile_id)
+        .find(|item| item.id == profile_id)
         .cloned()
         .ok_or_else(NativeAgentError::not_found)?;
-    let mut operations = Vec::new();
-    record(
-        &mut operations,
-        "audio-input",
-        audio::set_default_audio_input(app.clone(), profile.preferences.audio_input_id.clone())
-            .await
-            .map(|_| ()),
-    );
-    record(
-        &mut operations,
-        "audio-output",
-        audio::set_default_audio_output(app.clone(), profile.preferences.audio_output_id.clone())
-            .await
-            .map(|_| ()),
-    );
-    record(
-        &mut operations,
-        "input-volume",
-        audio::set_audio_volume(
-            app.clone(),
-            profile.preferences.audio_input_id.clone(),
-            profile.preferences.input_volume,
-        )
-        .await
-        .map(|_| ()),
-    );
-    record(
-        &mut operations,
-        "microphone-mute",
-        audio::set_audio_mute(
-            app.clone(),
-            profile.preferences.audio_input_id.clone(),
-            profile.preferences.microphones_muted,
-        )
-        .await
-        .map(|_| ()),
-    );
-    record(
-        &mut operations,
-        "camera-preference",
-        camera::set_preferred_camera(app.clone(), profile.preferences.camera_id.clone())
-            .map(|_| ()),
-    );
-    if profile.preferences.camera_enabled {
-        operations.push(success("camera-privacy"));
-    } else {
-        operations.push(failure("camera-privacy", NativeAgentError::unsupported()));
+    let devices = audio::get_audio_devices(app.clone()).await?;
+    let cameras = camera::get_cameras(app.clone()).await?;
+    let input = profile
+        .preferences
+        .audio_input_id
+        .as_deref()
+        .and_then(|id| {
+            devices
+                .iter()
+                .find(|item| item.id() == id && item.is_input())
+        });
+    let output = profile
+        .preferences
+        .audio_output_id
+        .as_deref()
+        .and_then(|id| {
+            devices
+                .iter()
+                .find(|item| item.id() == id && item.is_output())
+        });
+    let selected_camera = profile
+        .preferences
+        .camera_id
+        .as_deref()
+        .and_then(|id| cameras.cameras().iter().find(|item| item.id() == id));
+    let mut operations = Vec::with_capacity(6);
+
+    match (
+        profile.preferences.set_audio_input_default,
+        &profile.preferences.audio_input_id,
+        input,
+    ) {
+        (false, _, _) => operations.push(skipped("audio-input", "skipped-not-requested")),
+        (true, None, _) | (true, Some(_), None) => {
+            operations.push(skipped("audio-input", "missing-device"))
+        }
+        (true, Some(_), Some(device)) if !device.can_set_default() => {
+            operations.push(skipped("audio-input", "skipped-unsupported"))
+        }
+        (true, Some(id), Some(_)) => record(
+            &mut operations,
+            "audio-input",
+            audio::set_default_audio_input(app.clone(), id.clone())
+                .await
+                .map(|_| ()),
+        ),
     }
+    match (&profile.preferences.audio_output_id, output) {
+        (None, _) => operations.push(skipped("audio-output", "skipped-not-requested")),
+        (Some(_), None) => operations.push(skipped("audio-output", "missing-device")),
+        (Some(_), Some(device)) if !device.can_set_default() => {
+            operations.push(skipped("audio-output", "skipped-unsupported"))
+        }
+        (Some(id), Some(_)) => record(
+            &mut operations,
+            "audio-output",
+            audio::set_default_audio_output(app.clone(), id.clone())
+                .await
+                .map(|_| ()),
+        ),
+    }
+    match (profile.preferences.input_volume, input) {
+        (None, _) => operations.push(skipped("input-volume", "skipped-not-requested")),
+        (Some(_), None) => operations.push(skipped("input-volume", "missing-device")),
+        (Some(_), Some(device)) if !device.can_set_volume() => {
+            operations.push(skipped("input-volume", "skipped-unsupported"))
+        }
+        (Some(value), Some(_)) => record(
+            &mut operations,
+            "input-volume",
+            audio::set_audio_volume(
+                app.clone(),
+                profile.preferences.audio_input_id.clone().unwrap(),
+                value,
+            )
+            .await
+            .map(|_| ()),
+        ),
+    }
+    match (profile.preferences.microphones_muted, input) {
+        (None, _) => operations.push(skipped("microphone-mute", "skipped-not-requested")),
+        (Some(_), None) => operations.push(skipped("microphone-mute", "missing-device")),
+        (Some(_), Some(device)) if !device.can_set_mute() => {
+            operations.push(skipped("microphone-mute", "skipped-unsupported"))
+        }
+        (Some(value), Some(_)) => record(
+            &mut operations,
+            "microphone-mute",
+            audio::set_audio_mute(
+                app.clone(),
+                profile.preferences.audio_input_id.clone().unwrap(),
+                value,
+            )
+            .await
+            .map(|_| ()),
+        ),
+    }
+    match (&profile.preferences.camera_id, selected_camera) {
+        (None, _) => operations.push(skipped("camera-preference", "skipped-not-requested")),
+        (Some(_), None) => operations.push(skipped("camera-preference", "missing-device")),
+        (Some(id), Some(_)) => record(
+            &mut operations,
+            "camera-preference",
+            camera::set_preferred_camera(app.clone(), id.clone()).map(|_| ()),
+        ),
+    }
+    if profile.preferences.stop_camera_preview {
+        camera::stop_camera_preview_process(preview.inner());
+        operations.push(success("camera-preview"));
+    } else {
+        operations.push(skipped("camera-preview", "skipped-not-requested"));
+    }
+
     let fully_applied = operations
         .iter()
-        .all(|operation| operation.status == "success");
+        .all(|item| !matches!(item.status, "failed" | "missing-device"));
     if fully_applied {
         store.active_profile_id = Some(profile_id.clone());
         for item in &mut store.profiles {
@@ -256,6 +361,13 @@ fn success(operation: &'static str) -> ProfileOperationResult {
         error: None,
     }
 }
+fn skipped(operation: &'static str, status: &'static str) -> ProfileOperationResult {
+    ProfileOperationResult {
+        operation,
+        status,
+        error: None,
+    }
+}
 fn failure(operation: &'static str, error: NativeAgentError) -> ProfileOperationResult {
     ProfileOperationResult {
         operation,
@@ -272,8 +384,8 @@ fn profiles_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, NativeAgentE
 
 #[cfg(test)]
 mod tests {
-    use super::{ProfileStore, PROFILE_SCHEMA_VERSION};
-    use crate::storage::profiles::{load_store, save_store, seed_store};
+    use super::{Profile, ProfilePreferences, ProfileStore, PROFILE_SCHEMA_VERSION};
+    use crate::storage::profiles::{load_or_migrate_store, save_store, seed_store};
     use std::{
         fs,
         path::PathBuf,
@@ -290,36 +402,100 @@ mod tests {
             ))
             .join("profiles.json")
     }
+
     #[test]
-    fn seeds_three_versioned_profiles_once() {
-        let path = test_path("seed");
-        let seeded = seed_store(&path, "input", "output", "camera").unwrap();
-        let loaded = seed_store(&path, "other", "other", "other").unwrap();
-        assert_eq!(seeded.profiles.len(), 3);
-        assert_eq!(loaded, seeded);
+    fn seeds_capability_aware_profiles_once() {
+        let path = test_path("seed-v2");
+        let seeded = seed_store(
+            &path,
+            Some(("input", true, true, true)),
+            Some(("output", true)),
+            Some("camera"),
+        )
+        .unwrap();
+        let loaded = seed_store(&path, None, None, None).unwrap();
+        assert_eq!(seeded, loaded);
         assert_eq!(loaded.version, PROFILE_SCHEMA_VERSION);
+        let private = loaded
+            .profiles
+            .iter()
+            .find(|item| item.id == "private")
+            .unwrap();
+        assert!(private.preferences.stop_camera_preview);
+        assert_eq!(private.preferences.microphones_muted, Some(true));
     }
+
     #[test]
     fn corrupt_storage_is_not_overwritten() {
-        let path = test_path("corrupt");
+        let path = test_path("corrupt-v2");
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, b"not-json").unwrap();
-        assert!(load_store(&path).is_err());
-        assert!(seed_store(&path, "input", "output", "camera").is_err());
+        assert!(load_or_migrate_store(&path).is_err());
         assert_eq!(fs::read(path).unwrap(), b"not-json");
     }
+
+    #[test]
+    fn migrates_v1_once_and_keeps_a_backup() {
+        let path = test_path("migrate-v1");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let legacy = serde_json::json!({"version":1,"activeProfileId":null,"profiles":[{"id":"custom","name":"Custom","description":"Kept","origin":"local","preset":null,"active":false,"preferences":{"audioInputId":"in","audioOutputId":"out","cameraId":"cam","inputVolume":42,"microphonesMuted":true,"cameraEnabled":false}}]});
+        fs::write(&path, serde_json::to_vec(&legacy).unwrap()).unwrap();
+        let migrated = load_or_migrate_store(&path).unwrap();
+        assert_eq!(migrated.version, 2);
+        assert_eq!(migrated.profiles[0].name, "Custom");
+        assert!(path.with_extension("v1.backup.json").exists());
+        assert_eq!(load_or_migrate_store(&path).unwrap(), migrated);
+    }
+
     #[test]
     fn rejects_an_unknown_schema_version() {
-        let path = test_path("version");
+        let path = test_path("version-v2");
         let store = ProfileStore {
             version: PROFILE_SCHEMA_VERSION + 1,
             profiles: vec![],
             active_profile_id: None,
         };
-        let parent = path.parent().unwrap();
-        fs::create_dir_all(parent).unwrap();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, serde_json::to_vec(&store).unwrap()).unwrap();
-        assert!(load_store(&path).is_err());
+        assert!(load_or_migrate_store(&path).is_err());
         assert!(save_store(&path, &store).is_err());
+    }
+
+    #[test]
+    fn volume_or_mute_requires_an_input_selection() {
+        let profile = Profile {
+            id: "x".into(),
+            name: "X".into(),
+            description: None,
+            origin: "local".into(),
+            preset: None,
+            active: false,
+            preferences: ProfilePreferences {
+                input_volume: Some(10),
+                ..Default::default()
+            },
+        };
+        assert!(!profile.is_valid());
+    }
+
+    #[test]
+    fn local_profile_survives_a_fresh_store_read() {
+        let path = test_path("persist-v2");
+        let mut store = seed_store(&path, None, None, None).unwrap();
+        store.profiles.push(Profile {
+            id: "focus".into(),
+            name: "Focus".into(),
+            description: Some("A saved local setup".into()),
+            origin: "local".into(),
+            preset: None,
+            active: false,
+            preferences: ProfilePreferences {
+                stop_camera_preview: true,
+                ..Default::default()
+            },
+        });
+        save_store(&path, &store).unwrap();
+        let restored = load_or_migrate_store(&path).unwrap();
+        assert_eq!(restored.profiles.last().unwrap().name, "Focus");
     }
 }

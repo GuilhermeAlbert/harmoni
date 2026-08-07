@@ -50,6 +50,18 @@ pub(crate) struct AudioDevice {
     can_set_default: bool,
 }
 
+impl AudioDevice {
+    pub(crate) fn can_set_default(&self) -> bool {
+        self.can_set_default
+    }
+    pub(crate) fn can_set_mute(&self) -> bool {
+        self.can_set_mute
+    }
+    pub(crate) fn can_set_volume(&self) -> bool {
+        self.can_set_volume
+    }
+}
+
 #[derive(Deserialize)]
 struct AudioDiscoveryResult {
     devices: Vec<AudioDevice>,

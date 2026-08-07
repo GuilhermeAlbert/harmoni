@@ -14,5 +14,6 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
 }
 
 export function getProfiles(): Promise<Profile[]> { return call("get_profiles"); }
+export function exportProfilesRecoveryCopy(): Promise<string> { return call("export_profiles_recovery_copy"); }
 export function saveProfile(profile: Profile): Promise<Profile[]> { return call("save_profile", { profile }); }
 export function applyProfile(profileId: string): Promise<ProfileApplicationResult> { return call("apply_profile", { profileId }); }
