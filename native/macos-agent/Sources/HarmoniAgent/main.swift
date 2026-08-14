@@ -14,8 +14,8 @@ while let line = readLine(strippingNewline: true) {
         writeDiagnostic("Rejected malformed protocol request.")
         output = .response(makeErrorResponse(
             id: nil,
-            code: "invalid_request",
-            message: "Malformed request envelope."
+            code: .invalidRequest,
+            message: AgentErrorMessage.malformedRequestEnvelope
         ))
     }
 

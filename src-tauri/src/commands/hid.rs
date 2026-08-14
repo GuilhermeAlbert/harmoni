@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Runtime};
 
-use crate::sidecar::{parse_agent_result, request_agent_output, AgentOutput, NativeAgentError};
+use crate::sidecar::{
+    parse_agent_result, request_agent_output, AgentMethod, AgentOutput, NativeAgentError,
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -50,7 +52,8 @@ pub(crate) struct HidDiscovery {
 pub(crate) async fn get_peripherals<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<HidDiscovery, NativeAgentError> {
-    let output = request_agent_output(&app, "hid.devices", "hid-devices", json!({})).await?;
+    let output =
+        request_agent_output(&app, AgentMethod::HidDevices, "hid-devices", json!({})).await?;
     parse_hid_discovery(&output)
 }
 

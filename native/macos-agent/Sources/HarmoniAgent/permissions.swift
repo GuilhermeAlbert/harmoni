@@ -3,18 +3,35 @@ import ApplicationServices
 import AVFoundation
 import Foundation
 
+enum PermissionCategory: String, Codable, CaseIterable {
+    case accessibility
+    case camera
+    case inputMonitoring = "input-monitoring"
+    case microphone
+}
+
+enum PermissionStatus: String, Encodable {
+    case authorized
+    case denied
+    case notDetermined = "not-determined"
+    case notGranted = "not-granted"
+    case restricted
+    case unknown
+    case unsupported
+}
+
 struct PermissionStatusResult: Encodable {
     let permissions: [PermissionStatusItem]
 }
 
 struct PermissionStatusItem: Encodable {
     let id: String
-    let category: String
-    let status: String
+    let category: PermissionCategory
+    let status: PermissionStatus
 }
 
 struct OpenSettingsResult: Encodable {
-    let category: String
+    let category: PermissionCategory
     let opened: Bool
 }
 
@@ -22,33 +39,34 @@ func readPermissionStatus() -> PermissionStatusResult {
     PermissionStatusResult(permissions: [
         PermissionStatusItem(
             id: "camera-permission",
-            category: "camera",
+            category: .camera,
             status: mediaAuthorizationStatus(for: .video)
         ),
         PermissionStatusItem(
             id: "microphone-permission",
-            category: "microphone",
+            category: .microphone,
             status: mediaAuthorizationStatus(for: .audio)
         ),
         PermissionStatusItem(
             id: "accessibility-permission",
-            category: "accessibility",
-            status: AXIsProcessTrusted() ? "authorized" : "not-granted"
+            category: .accessibility,
+            status: AXIsProcessTrusted() ? .authorized : .notGranted
         ),
         PermissionStatusItem(
             id: "input-monitoring-permission",
-            category: "input-monitoring",
+            category: .inputMonitoring,
             status: inputMonitoringStatus()
         ),
     ])
 }
 
-func openPermissionSettings(category: String) -> OpenSettingsResult? {
+func openPermissionSettings(category rawCategory: String) -> OpenSettingsResult? {
+    guard let category = PermissionCategory(rawValue: rawCategory) else { return nil }
     let paneByCategory = [
-        "accessibility": "Privacy_Accessibility",
-        "camera": "Privacy_Camera",
-        "input-monitoring": "Privacy_ListenEvent",
-        "microphone": "Privacy_Microphone",
+        PermissionCategory.accessibility: "Privacy_Accessibility",
+        .camera: "Privacy_Camera",
+        .inputMonitoring: "Privacy_ListenEvent",
+        .microphone: "Privacy_Microphone",
     ]
 
     guard let pane = paneByCategory[category],
@@ -65,29 +83,29 @@ func openPermissionSettings(category: String) -> OpenSettingsResult? {
     )
 }
 
-private func mediaAuthorizationStatus(for mediaType: AVMediaType) -> String {
+private func mediaAuthorizationStatus(for mediaType: AVMediaType) -> PermissionStatus {
     if #available(macOS 10.14, *) {
         switch AVCaptureDevice.authorizationStatus(for: mediaType) {
         case .authorized:
-            return "authorized"
+            return .authorized
         case .denied:
-            return "denied"
+            return .denied
         case .notDetermined:
-            return "not-determined"
+            return .notDetermined
         case .restricted:
-            return "restricted"
+            return .restricted
         @unknown default:
-            return "unknown"
+            return .unknown
         }
     }
 
-    return "unsupported"
+    return .unsupported
 }
 
-private func inputMonitoringStatus() -> String {
+private func inputMonitoringStatus() -> PermissionStatus {
     if #available(macOS 10.15, *) {
-        return CGPreflightListenEventAccess() ? "authorized" : "not-granted"
+        return CGPreflightListenEventAccess() ? .authorized : .notGranted
     }
 
-    return "unsupported"
+    return .unsupported
 }

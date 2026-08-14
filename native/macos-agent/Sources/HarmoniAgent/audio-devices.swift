@@ -1,35 +1,6 @@
 import CoreAudio
 import Foundation
 
-struct AudioDiscoveryResult: Encodable {
-    let devices: [DiscoveredAudioDevice]
-}
-
-struct DiscoveredAudioDevice: Encodable {
-    let id: String
-    let uid: String
-    let name: String
-    let direction: String
-    let transport: String
-    let isDefault: Bool
-    let volume: Int?
-    let muted: Bool?
-    let canReadVolume: Bool
-    let canReadMute: Bool
-    let canSetVolume: Bool
-    let canSetMute: Bool
-    let canSetDefault: Bool
-}
-
-struct AudioMutationResult: Encodable {
-    let device: DiscoveredAudioDevice
-}
-
-struct AudioMutationFailure: Error {
-    let code: String
-    let message: String
-}
-
 func discoverAudioDevices() -> AudioDiscoveryResult {
     let defaultInput = defaultDevice(
         selector: kAudioHardwarePropertyDefaultInputDevice
@@ -59,7 +30,7 @@ func discoverAudioDevices() -> AudioDiscoveryResult {
                 deviceID: deviceID,
                 uid: uid,
                 name: name,
-                direction: "input",
+                direction: .input,
                 scope: kAudioDevicePropertyScopeInput,
                 transport: transport,
                 isDefault: deviceID == defaultInput
@@ -71,7 +42,7 @@ func discoverAudioDevices() -> AudioDiscoveryResult {
                 deviceID: deviceID,
                 uid: uid,
                 name: name,
-                direction: "output",
+                direction: .output,
                 scope: kAudioDevicePropertyScopeOutput,
                 transport: transport,
                 isDefault: deviceID == defaultOutput
@@ -80,7 +51,8 @@ func discoverAudioDevices() -> AudioDiscoveryResult {
     }
 
     return AudioDiscoveryResult(devices: discovered.sorted {
-        ($0.direction, $0.name, $0.uid) < ($1.direction, $1.name, $1.uid)
+        ($0.direction.rawValue, $0.name, $0.uid)
+            < ($1.direction.rawValue, $1.name, $1.uid)
     })
 }
 
@@ -102,9 +74,9 @@ private func makeAudioDevice(
     deviceID: AudioDeviceID,
     uid: String,
     name: String,
-    direction: String,
+    direction: AudioDirection,
     scope: AudioObjectPropertyScope,
-    transport: String,
+    transport: AudioTransport,
     isDefault: Bool
 ) -> DiscoveredAudioDevice {
     let volumeScalar = floatProperty(
@@ -119,7 +91,7 @@ private func makeAudioDevice(
     )
 
     return DiscoveredAudioDevice(
-        id: "\(uid):\(direction)",
+        id: "\(uid):\(direction.rawValue)",
         uid: uid,
         name: name,
         direction: direction,
@@ -145,18 +117,18 @@ private func makeAudioDevice(
 
 func setDefaultAudioDevice(
     stableID: String,
-    direction: String
+    direction: AudioDirection
 ) -> Result<AudioMutationResult, AudioMutationFailure> {
     guard let target = resolveAudioDevice(stableID: stableID),
           target.device.direction == direction
     else {
         return .failure(AudioMutationFailure(
-            code: "not_found",
-            message: "The requested audio device was not found."
+            code: .notFound,
+            message: AudioErrorMessage.deviceNotFound
         ))
     }
 
-    let selector = direction == "input"
+    let selector = direction == .input
         ? kAudioHardwarePropertyDefaultInputDevice
         : kAudioHardwarePropertyDefaultOutputDevice
     var address = AudioObjectPropertyAddress(
@@ -189,8 +161,8 @@ func setAudioVolume(
 ) -> Result<AudioMutationResult, AudioMutationFailure> {
     guard (0...100).contains(volume) else {
         return .failure(AudioMutationFailure(
-            code: "invalid_argument",
-            message: "Volume must be between 0 and 100."
+            code: .invalidArgument,
+            message: AudioErrorMessage.volumeOutOfRange
         ))
     }
     guard let target = resolveAudioDevice(stableID: stableID) else {
@@ -241,12 +213,12 @@ private func resolveAudioDevice(stableID: String) -> ResolvedAudioDevice? {
             continue
         }
         let transport = transportName(deviceID: deviceID)
-        let directions: [(String, AudioObjectPropertyScope, Bool)] = [
-            ("input", kAudioDevicePropertyScopeInput, deviceID == defaults.input),
-            ("output", kAudioDevicePropertyScopeOutput, deviceID == defaults.output),
+        let directions: [(AudioDirection, AudioObjectPropertyScope, Bool)] = [
+            (AudioDirection.input, kAudioDevicePropertyScopeInput, deviceID == defaults.input),
+            (AudioDirection.output, kAudioDevicePropertyScopeOutput, deviceID == defaults.output),
         ]
         for (direction, scope, isDefault) in directions
-        where stableID == "\(uid):\(direction)" && hasStreams(deviceID: deviceID, scope: scope) {
+        where stableID == "\(uid):\(direction.rawValue)" && hasStreams(deviceID: deviceID, scope: scope) {
             return ResolvedAudioDevice(
                 deviceID: deviceID,
                 scope: scope,
@@ -322,8 +294,8 @@ private func mutationResult(
 ) -> Result<AudioMutationResult, AudioMutationFailure> {
     guard status == noErr else {
         return .failure(AudioMutationFailure(
-            code: "process",
-            message: "Core Audio rejected the requested change."
+            code: .process,
+            message: AudioErrorMessage.processRejected
         ))
     }
     guard let refreshed = resolveAudioDevice(stableID: stableID)?.device else {
@@ -334,21 +306,21 @@ private func mutationResult(
 
 private func missingAudioDevice() -> Result<AudioMutationResult, AudioMutationFailure> {
     .failure(AudioMutationFailure(
-        code: "not_found",
-        message: "The requested audio device was not found."
+        code: .notFound,
+        message: AudioErrorMessage.deviceNotFound
     ))
 }
 
 private func unsupportedMutation() -> Result<AudioMutationResult, AudioMutationFailure> {
     .failure(AudioMutationFailure(
-        code: "unsupported",
-        message: "The requested control is not supported by this audio device."
+        code: .unsupported,
+        message: AudioErrorMessage.unsupportedControl
     ))
 }
 
-private func isDefaultPropertySettable(direction: String) -> Bool {
+private func isDefaultPropertySettable(direction: AudioDirection) -> Bool {
     var address = AudioObjectPropertyAddress(
-        mSelector: direction == "input"
+        mSelector: direction == .input
             ? kAudioHardwarePropertyDefaultInputDevice
             : kAudioHardwarePropertyDefaultOutputDevice,
         mScope: kAudioObjectPropertyScopeGlobal,
@@ -445,30 +417,30 @@ private func hasStreams(
     ) == noErr && size > 0
 }
 
-private func transportName(deviceID: AudioDeviceID) -> String {
+private func transportName(deviceID: AudioDeviceID) -> AudioTransport {
     guard let value = uint32Property(
         objectID: deviceID,
         selector: kAudioDevicePropertyTransportType,
         scope: kAudioObjectPropertyScopeGlobal
     ) else {
-        return "unknown"
+        return .unknown
     }
 
     switch value {
     case kAudioDeviceTransportTypeBuiltIn:
-        return "built-in"
+        return .builtIn
     case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE:
-        return "bluetooth"
+        return .bluetooth
     case kAudioDeviceTransportTypeHDMI, kAudioDeviceTransportTypeDisplayPort:
-        return "hdmi"
+        return .hdmi
     case kAudioDeviceTransportTypeUSB:
-        return "usb"
+        return .usb
     case kAudioDeviceTransportTypeAirPlay:
-        return "airplay"
+        return .airplay
     case kAudioDeviceTransportTypeVirtual, kAudioDeviceTransportTypeAggregate:
-        return "virtual"
+        return .virtual
     default:
-        return "unknown"
+        return .unknown
     }
 }
 
@@ -573,19 +545,19 @@ private final class AudioDeviceEventWatcher {
         guard addSystemListener(
             selector: kAudioHardwarePropertyDevices,
             id: "audio.inventory",
-            category: "audio",
-            change: "inventory-changed",
+            category: .audio,
+            change: .inventoryChanged,
             rebuildDevices: true
         ), addSystemListener(
             selector: kAudioHardwarePropertyDefaultInputDevice,
             id: "audio.default-input",
-            category: "audio-input",
-            change: "default-changed"
+            category: .audioInput,
+            change: .defaultChanged
         ), addSystemListener(
             selector: kAudioHardwarePropertyDefaultOutputDevice,
             id: "audio.default-output",
-            category: "audio-output",
-            change: "default-changed"
+            category: .audioOutput,
+            change: .defaultChanged
         ) else {
             removeAllListeners()
             return false
@@ -597,8 +569,8 @@ private final class AudioDeviceEventWatcher {
     private func addSystemListener(
         selector: AudioObjectPropertySelector,
         id: String,
-        category: String,
-        change: String,
+        category: DeviceEventCategory,
+        change: DeviceEventChange,
         rebuildDevices: Bool = false
     ) -> Bool {
         addListener(
@@ -620,10 +592,10 @@ private final class AudioDeviceEventWatcher {
                 selector: kAudioDevicePropertyDeviceUID
             ) else { continue }
             for (direction, scope, category) in [
-                ("input", kAudioDevicePropertyScopeInput, "audio-input"),
-                ("output", kAudioDevicePropertyScopeOutput, "audio-output"),
+                (AudioDirection.input, kAudioDevicePropertyScopeInput, DeviceEventCategory.audioInput),
+                (AudioDirection.output, kAudioDevicePropertyScopeOutput, DeviceEventCategory.audioOutput),
             ] where hasStreams(deviceID: deviceID, scope: scope) {
-                let stableID = "\(uid):\(direction)"
+                let stableID = "\(uid):\(direction.rawValue)"
                 _ = addListener(
                     objectID: deviceID,
                     selector: kAudioDevicePropertyVolumeScalar,
@@ -633,7 +605,7 @@ private final class AudioDeviceEventWatcher {
                     writeAudioDeviceChangeEvent(
                         id: stableID,
                         category: category,
-                        change: "volume-changed"
+                        change: .volumeChanged
                     )
                 }
                 _ = addListener(
@@ -645,7 +617,7 @@ private final class AudioDeviceEventWatcher {
                     writeAudioDeviceChangeEvent(
                         id: stableID,
                         category: category,
-                        change: "mute-changed"
+                        change: .muteChanged
                     )
                 }
             }
@@ -693,11 +665,11 @@ private final class AudioDeviceEventWatcher {
 
 private func writeAudioDeviceChangeEvent(
     id: String,
-    category: String,
-    change: String
+    category: DeviceEventCategory,
+    change: DeviceEventChange
 ) {
     let envelope = DeviceEventEnvelope(
-        kind: "device-change",
+        kind: .deviceChange,
         version: PROTOCOL_VERSION,
         event: DeviceEvent(
             id: id,

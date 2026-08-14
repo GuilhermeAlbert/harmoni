@@ -4,10 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Runtime};
 
-use crate::sidecar::{parse_agent_result, request_agent_output, AgentOutput, NativeAgentError};
-
-const OPEN_PERMISSION_SETTINGS_METHOD: &str = "permissions.openSettings";
-const PERMISSION_STATUS_METHOD: &str = "permissions.status";
+use crate::sidecar::{
+    parse_agent_result, request_agent_output, AgentMethod, AgentOutput, NativeAgentError,
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -52,8 +51,13 @@ struct OpenSettingsResult {
 pub(crate) async fn get_permission_status<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Vec<Permission>, NativeAgentError> {
-    let output =
-        request_agent_output(&app, PERMISSION_STATUS_METHOD, "permissions", json!({})).await?;
+    let output = request_agent_output(
+        &app,
+        AgentMethod::PermissionsStatus,
+        "permissions",
+        json!({}),
+    )
+    .await?;
     parse_permission_status(&output)
 }
 
@@ -64,7 +68,7 @@ pub(crate) async fn open_permission_settings<R: Runtime>(
 ) -> Result<(), NativeAgentError> {
     let output = request_agent_output(
         &app,
-        OPEN_PERMISSION_SETTINGS_METHOD,
+        AgentMethod::PermissionsOpenSettings,
         "permission-settings",
         json!({ "category": category }),
     )

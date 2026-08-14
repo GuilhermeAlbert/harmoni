@@ -5,9 +5,7 @@ use tokio::time::sleep;
 
 use super::device_event::{parse_device_event, DEVICE_EVENT_NAME};
 use super::watcher::{retry_delay, WatcherProcess, MAX_RESTART_ATTEMPTS};
-use crate::sidecar::spawn_agent_request;
-
-const AUDIO_EVENT_METHOD: &str = "audio.watchDeviceEvents";
+use crate::sidecar::{spawn_agent_request, AgentMethod};
 
 #[derive(Default)]
 pub(crate) struct AudioEventProcess(pub(crate) WatcherProcess);
@@ -19,10 +17,16 @@ pub(crate) fn start_audio_device_events<R: Runtime>(app: AppHandle<R>) {
             return;
         }
         for attempt in 0..=MAX_RESTART_ATTEMPTS {
-            let Ok((_, mut events, child)) =
-                spawn_agent_request(&app, AUDIO_EVENT_METHOD, "audio-events", json!({}))
-            else {
-                eprintln!("native-agent watcher spawn failed: method={AUDIO_EVENT_METHOD} attempt={attempt}");
+            let Ok((_, mut events, child)) = spawn_agent_request(
+                &app,
+                AgentMethod::AudioWatchDeviceEvents,
+                "audio-events",
+                json!({}),
+            ) else {
+                eprintln!(
+                    "native-agent watcher spawn failed: method={} attempt={attempt}",
+                    AgentMethod::AudioWatchDeviceEvents.as_str()
+                );
                 if attempt < MAX_RESTART_ATTEMPTS && !state.0.is_stopping() {
                     sleep(retry_delay(attempt)).await;
                     continue;
@@ -52,7 +56,8 @@ pub(crate) fn start_audio_device_events<R: Runtime>(app: AppHandle<R>) {
                 break;
             }
             eprintln!(
-                "native-agent watcher terminated: method={AUDIO_EVENT_METHOD} attempt={attempt}"
+                "native-agent watcher terminated: method={} attempt={attempt}",
+                AgentMethod::AudioWatchDeviceEvents.as_str()
             );
             sleep(retry_delay(attempt)).await;
         }

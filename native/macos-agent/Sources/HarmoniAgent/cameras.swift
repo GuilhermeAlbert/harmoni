@@ -2,43 +2,6 @@ import AVFoundation
 import CoreMedia
 import Foundation
 
-struct CameraDiscoveryResult: Encodable {
-    let authorization: String
-    let cameras: [DiscoveredCamera]
-}
-
-struct DiscoveredCamera: Encodable {
-    let id: String
-    let name: String
-    let transport: String
-    let preferred: Bool
-    let formats: [DiscoveredCameraFormat]
-    let zoom: CameraCapability?
-    let exposure: CameraCapability?
-}
-
-struct DiscoveredCameraFormat: Encodable {
-    let width: Int32
-    let height: Int32
-    let frameRate: Double
-}
-
-struct CameraCapability: Encodable {
-    let min: Double
-    let max: Double
-    let value: Double
-    let canControl: Bool
-}
-
-struct CameraMutationResult: Encodable {
-    let camera: DiscoveredCamera
-}
-
-struct CameraMutationFailure: Error {
-    let code: String
-    let message: String
-}
-
 func discoverCameras() -> CameraDiscoveryResult {
     let discovery = AVCaptureDevice.DiscoverySession(
         deviceTypes: cameraDeviceTypes(),
@@ -97,17 +60,17 @@ func setCameraExposure(
 }
 
 private func invalidCameraValue() -> Result<CameraMutationResult, CameraMutationFailure> {
-    .failure(CameraMutationFailure(code: "invalid_argument", message: "Camera control value must be finite."))
+    .failure(CameraMutationFailure(code: .invalidArgument, message: CameraErrorMessage.invalidControlValue))
 }
 
 private func missingCamera() -> Result<CameraMutationResult, CameraMutationFailure> {
-    .failure(CameraMutationFailure(code: "not_found", message: "The requested camera was not found."))
+    .failure(CameraMutationFailure(code: .notFound, message: CameraErrorMessage.cameraNotFound))
 }
 
 private func unsupportedCameraControl(control: String) -> Result<CameraMutationResult, CameraMutationFailure> {
     return .failure(CameraMutationFailure(
-        code: "unsupported",
-        message: "AVFoundation does not expose reversible \(control) control on macOS."
+        code: .unsupported,
+        message: CameraErrorMessage.unsupportedControl(control)
     ))
 }
 
@@ -118,14 +81,14 @@ func watchCameraDeviceEvents() -> Never {
         object: nil,
         queue: nil
     ) { notification in
-        writeCameraDeviceChangeEvent(notification: notification, change: "connected")
+        writeCameraDeviceChangeEvent(notification: notification, change: .connected)
     }
     let disconnected = center.addObserver(
         forName: .AVCaptureDeviceWasDisconnected,
         object: nil,
         queue: nil
     ) { notification in
-        writeCameraDeviceChangeEvent(notification: notification, change: "disconnected")
+        writeCameraDeviceChangeEvent(notification: notification, change: .disconnected)
     }
     _ = (connected, disconnected)
 
@@ -143,31 +106,31 @@ private func cameraDeviceTypes() -> [AVCaptureDevice.DeviceType] {
     ]
 }
 
-private func cameraAuthorization() -> String {
+private func cameraAuthorization() -> PermissionStatus {
     switch AVCaptureDevice.authorizationStatus(for: .video) {
     case .authorized:
-        return "authorized"
+        return .authorized
     case .denied:
-        return "denied"
+        return .denied
     case .notDetermined:
-        return "not-determined"
+        return .notDetermined
     case .restricted:
-        return "restricted"
+        return .restricted
     @unknown default:
-        return "unknown"
+        return .unknown
     }
 }
 
-private func cameraTransport(_ device: AVCaptureDevice) -> String {
+private func cameraTransport(_ device: AVCaptureDevice) -> CameraTransport {
     switch device.deviceType {
     case .builtInWideAngleCamera:
-        return "built-in"
+        return .builtIn
     case .continuityCamera, .deskViewCamera:
-        return "continuity"
+        return .continuity
     case .external:
-        return "external"
+        return .external
     default:
-        return "unknown"
+        return .unknown
     }
 }
 
@@ -194,14 +157,14 @@ private func cameraFormats(_ device: AVCaptureDevice) -> [DiscoveredCameraFormat
     }
 }
 
-private func writeCameraDeviceChangeEvent(notification: Notification, change: String) {
+private func writeCameraDeviceChangeEvent(notification: Notification, change: DeviceEventChange) {
     let uniqueID = (notification.object as? AVCaptureDevice)?.uniqueID ?? "inventory"
     let envelope = DeviceEventEnvelope(
-        kind: "device-change",
+        kind: .deviceChange,
         version: PROTOCOL_VERSION,
         event: DeviceEvent(
             id: stableDeviceEventID(prefix: "camera", value: uniqueID),
-            category: "camera",
+            category: .camera,
             change: change,
             occurredAt: ISO8601DateFormatter().string(from: Date())
         )
