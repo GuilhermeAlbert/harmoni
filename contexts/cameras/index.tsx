@@ -4,6 +4,8 @@ import type { PropsWithChildren } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { CamerasContext } from "./context";
+import { CAMERA_REFRESH_DEBOUNCE_MILLISECONDS } from "./constants";
+import { getCameraFailureState } from "./helper";
 import { CameraDiscoveryState } from "@/lib/enums/camera-discovery-state";
 import { CameraAction } from "@/lib/enums/camera-action";
 import { CameraMutationStatus } from "@/lib/enums/camera-mutation-status";
@@ -49,7 +51,7 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
       .catch(() => {
         if (!active || sequence !== refreshSequence.current) return;
         setRefreshing(false);
-        setState(camerasRef.current.length ? CameraDiscoveryState.Degraded : CameraDiscoveryState.Error);
+        setState(getCameraFailureState(camerasRef.current.length));
       });
     return () => {
       active = false;
@@ -66,7 +68,7 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => {
           if (active) setAttempt((current) => current + 1);
-        }, 150);
+        }, CAMERA_REFRESH_DEBOUNCE_MILLISECONDS);
       }
     })
       .then((nextUnsubscribe) => {
@@ -74,7 +76,7 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
         else nextUnsubscribe();
       })
       .catch(() => {
-        if (active) setState(camerasRef.current.length ? CameraDiscoveryState.Degraded : CameraDiscoveryState.Error);
+        if (active) setState(getCameraFailureState(camerasRef.current.length));
       });
     return () => {
       active = false;

@@ -10,13 +10,12 @@ import { BadgeTone } from "@/components/badge/enums";
 import { Button } from "@/components/button";
 import { ButtonVariant } from "@/components/button/enums";
 import { Panel } from "@/components/panel";
+import { CameraPreviewStatus } from "@/lib/enums/camera-preview-status";
 import { startCameraPreview, stopCameraPreview } from "@/lib/services/cameras";
 import type { CameraPreviewSession } from "@/lib/types/camera";
 
-type PreviewStatus = "idle" | "starting" | "running" | "error";
-
 export function CameraPreview({ camera, messages }: CameraPreviewProps): React.ReactNode {
-  const [status, setStatus] = useState<PreviewStatus>("idle");
+  const [status, setStatus] = useState(CameraPreviewStatus.Idle);
   const [session, setSession] = useState<CameraPreviewSession | null>(null);
   const [error, setError] = useState("");
   const [frameVersion, setFrameVersion] = useState(0);
@@ -24,7 +23,7 @@ export function CameraPreview({ camera, messages }: CameraPreviewProps): React.R
   const running = useRef(false);
 
   const start = useCallback(async (cameraId: string): Promise<void> => {
-    setStatus("starting");
+    setStatus(CameraPreviewStatus.Starting);
     setError("");
     try {
       const nextSession = await startCameraPreview(cameraId);
@@ -35,19 +34,19 @@ export function CameraPreview({ camera, messages }: CameraPreviewProps): React.R
       running.current = true;
       setSession(nextSession);
       setFrameVersion(Date.now());
-      setStatus("running");
+      setStatus(CameraPreviewStatus.Running);
     } catch (cause: unknown) {
       running.current = false;
       setSession(null);
       setError(cause instanceof Error ? cause.message : messages.previewError);
-      setStatus("error");
+      setStatus(CameraPreviewStatus.Error);
     }
   }, [messages.previewError]);
 
   const stop = useCallback(async (): Promise<void> => {
     running.current = false;
     setSession(null);
-    setStatus("idle");
+    setStatus(CameraPreviewStatus.Idle);
     setError("");
     await stopCameraPreview().catch(() => undefined);
   }, []);
@@ -61,7 +60,7 @@ export function CameraPreview({ camera, messages }: CameraPreviewProps): React.R
   }, [camera.id, start]);
 
   useEffect(() => {
-    if (status !== "running") return;
+    if (status !== CameraPreviewStatus.Running) return;
     const interval = window.setInterval(() => setFrameVersion(Date.now()), 150);
     return () => window.clearInterval(interval);
   }, [status]);
@@ -82,8 +81,8 @@ export function CameraPreview({ camera, messages }: CameraPreviewProps): React.R
           <h2 className="text-sm font-semibold">{messages.previewTitle}</h2>
           <p className="mt-1 text-xs text-zinc-500">{messages.previewDescription}</p>
         </div>
-        <Badge tone={status === "running" ? BadgeTone.Success : BadgeTone.Neutral}>
-          {status === "running" ? messages.previewRunning : messages.previewIdle}
+        <Badge tone={status === CameraPreviewStatus.Running ? BadgeTone.Success : BadgeTone.Neutral}>
+          {status === CameraPreviewStatus.Running ? messages.previewRunning : messages.previewIdle}
         </Badge>
       </div>
 
@@ -103,16 +102,16 @@ export function CameraPreview({ camera, messages }: CameraPreviewProps): React.R
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p aria-live="polite" className={`text-xs font-medium ${error ? "text-red-600 dark:text-red-400" : "text-zinc-500"}`} role="status">
-          {error || (status === "starting" ? messages.startingPreview : status === "running" ? messages.previewActive : messages.previewNotStarted)}
+          {error || (status === CameraPreviewStatus.Starting ? messages.startingPreview : status === CameraPreviewStatus.Running ? messages.previewActive : messages.previewNotStarted)}
         </p>
-        {status === "running" ? (
+        {status === CameraPreviewStatus.Running ? (
           <Button onClick={() => void stop()} variant={ButtonVariant.Secondary}>
             <Square aria-hidden="true" className="size-3" />{messages.stopPreview}
           </Button>
         ) : (
-          <Button disabled={status === "starting"} onClick={() => void start(camera.id)}>
+          <Button disabled={status === CameraPreviewStatus.Starting} onClick={() => void start(camera.id)}>
             <CameraIcon aria-hidden="true" className="size-4" />
-            {status === "starting" ? messages.startingPreview : messages.startPreview}
+            {status === CameraPreviewStatus.Starting ? messages.startingPreview : messages.startPreview}
           </Button>
         )}
       </div>

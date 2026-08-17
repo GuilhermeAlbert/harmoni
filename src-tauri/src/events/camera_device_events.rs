@@ -5,9 +5,7 @@ use tokio::time::sleep;
 
 use super::device_event::{parse_device_event, DEVICE_EVENT_NAME};
 use super::watcher::{retry_delay, WatcherProcess, MAX_RESTART_ATTEMPTS};
-use crate::sidecar::spawn_agent_request;
-
-const CAMERA_EVENT_METHOD: &str = "camera.watchDeviceEvents";
+use crate::sidecar::{spawn_agent_request, AgentMethod};
 
 #[derive(Default)]
 pub(crate) struct CameraEventProcess(pub(crate) WatcherProcess);
@@ -19,10 +17,16 @@ pub(crate) fn start_camera_device_events<R: Runtime>(app: AppHandle<R>) {
             return;
         }
         for attempt in 0..=MAX_RESTART_ATTEMPTS {
-            let Ok((_, mut events, child)) =
-                spawn_agent_request(&app, CAMERA_EVENT_METHOD, "camera-events", json!({}))
-            else {
-                eprintln!("native-agent watcher spawn failed: method={CAMERA_EVENT_METHOD} attempt={attempt}");
+            let Ok((_, mut events, child)) = spawn_agent_request(
+                &app,
+                AgentMethod::CameraWatchDeviceEvents,
+                "camera-events",
+                json!({}),
+            ) else {
+                eprintln!(
+                    "native-agent watcher spawn failed: method={} attempt={attempt}",
+                    AgentMethod::CameraWatchDeviceEvents.as_str()
+                );
                 if attempt < MAX_RESTART_ATTEMPTS && !state.0.is_stopping() {
                     sleep(retry_delay(attempt)).await;
                     continue;
@@ -52,7 +56,8 @@ pub(crate) fn start_camera_device_events<R: Runtime>(app: AppHandle<R>) {
                 break;
             }
             eprintln!(
-                "native-agent watcher terminated: method={CAMERA_EVENT_METHOD} attempt={attempt}"
+                "native-agent watcher terminated: method={} attempt={attempt}",
+                AgentMethod::CameraWatchDeviceEvents.as_str()
             );
             sleep(retry_delay(attempt)).await;
         }

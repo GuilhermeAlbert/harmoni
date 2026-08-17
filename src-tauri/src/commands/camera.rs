@@ -14,14 +14,10 @@ use tokio::time::timeout;
 
 use crate::sidecar::{
     parse_agent_result, parse_agent_result_line, request_agent_output, spawn_agent_request,
-    AgentOutput, NativeAgentError,
+    AgentMethod, AgentOutput, NativeAgentError,
 };
 
-const CAMERA_DEVICES_METHOD: &str = "camera.devices";
 const CAMERA_PREFERENCES_FILE: &str = "camera-preferences.json";
-const SET_CAMERA_EXPOSURE_METHOD: &str = "camera.setExposure";
-const SET_CAMERA_ZOOM_METHOD: &str = "camera.setZoom";
-const START_CAMERA_PREVIEW_METHOD: &str = "camera.startPreview";
 const CAMERA_PREVIEW_FILE: &str = "camera-preview.jpg";
 const CAMERA_PREVIEW_TIMEOUT: Duration = Duration::from_secs(35);
 
@@ -139,8 +135,13 @@ struct CameraMutationResult {
 pub(crate) async fn get_cameras<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<CameraDiscovery, NativeAgentError> {
-    let output =
-        request_agent_output(&app, CAMERA_DEVICES_METHOD, "camera-devices", json!({})).await?;
+    let output = request_agent_output(
+        &app,
+        AgentMethod::CameraDevices,
+        "camera-devices",
+        json!({}),
+    )
+    .await?;
     let mut discovery = parse_camera_discovery(&output)?;
     let preferred = load_preferred_camera(&camera_preferences_path(&app)?)?;
     apply_preferred_camera(&mut discovery, preferred);
@@ -175,7 +176,7 @@ pub(crate) async fn set_camera_zoom<R: Runtime>(
     camera_id: String,
     value: f64,
 ) -> Result<CameraDevice, NativeAgentError> {
-    mutate_camera(&app, SET_CAMERA_ZOOM_METHOD, camera_id, value).await
+    mutate_camera(&app, AgentMethod::CameraSetZoom, camera_id, value).await
 }
 
 #[tauri::command]
@@ -184,7 +185,7 @@ pub(crate) async fn set_camera_exposure<R: Runtime>(
     camera_id: String,
     value: f64,
 ) -> Result<CameraDevice, NativeAgentError> {
-    mutate_camera(&app, SET_CAMERA_EXPOSURE_METHOD, camera_id, value).await
+    mutate_camera(&app, AgentMethod::CameraSetExposure, camera_id, value).await
 }
 
 #[tauri::command]
@@ -203,7 +204,7 @@ pub(crate) async fn start_camera_preview<R: Runtime>(
     let output_path_string = output_path.to_string_lossy().into_owned();
     let (request_id, events, child) = spawn_agent_request(
         &app,
-        START_CAMERA_PREVIEW_METHOD,
+        AgentMethod::CameraStartPreview,
         "camera-preview",
         json!({ "cameraId": camera_id, "outputPath": output_path_string }),
     )?;
@@ -292,7 +293,7 @@ fn camera_preview_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, Native
 
 async fn mutate_camera<R: Runtime>(
     app: &AppHandle<R>,
-    method: &str,
+    method: AgentMethod,
     camera_id: String,
     value: f64,
 ) -> Result<CameraDevice, NativeAgentError> {

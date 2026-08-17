@@ -9,6 +9,7 @@ import { Panel } from "@/components/panel";
 import { useAudioDevices } from "@/contexts/audio-devices/use-audio-devices";
 import { useCameras } from "@/contexts/cameras/use-cameras";
 import { ProfileOrigin } from "@/lib/enums/profile-origin";
+import { ProfileOperationStatus } from "@/lib/enums/profile-operation-status";
 
 export function ProfileCard({
   messages,
@@ -103,8 +104,20 @@ export function ProfileCard({
       {outcome ? (
         <ul className="mt-4 grid gap-1 border-t border-zinc-200 pt-4 text-xs dark:border-white/[0.08]" aria-label={messages.outcome}>
           {outcome.operations.map((operation) => (
-            <li className={operation.status === "success" ? "text-emerald-700 dark:text-emerald-300" : operation.status === "failed" || operation.status === "missing-device" ? "text-red-700 dark:text-red-300" : "text-zinc-500"} key={operation.operation}>
-              {messages.operations[operation.operation as keyof typeof messages.operations] ?? operation.operation}: {operation.error?.message ?? messages.operationStatuses[operation.status]}
+            <li
+              className={
+                operation.status === ProfileOperationStatus.Success
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : operation.status === ProfileOperationStatus.Failed ||
+                      operation.status === ProfileOperationStatus.MissingDevice
+                    ? "text-red-700 dark:text-red-300"
+                    : "text-zinc-500"
+              }
+              key={operation.operation}
+            >
+              {messages.operations[operation.operation]}:{" "}
+              {operation.error?.message ??
+                messages.operationStatuses[operation.status]}
             </li>
           ))}
         </ul>

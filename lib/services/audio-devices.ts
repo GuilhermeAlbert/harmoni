@@ -1,6 +1,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { NativeAgentErrorCode } from "@/lib/enums/native-agent-error-code";
+import { AudioDirection } from "@/lib/enums/audio-direction";
 import { createNativeAgentError } from "@/lib/services/native-agent";
 import type { AudioDevice } from "@/lib/types/audio-device";
 
@@ -29,7 +30,7 @@ export async function setDefaultAudioDevice(
   device: AudioDevice,
 ): Promise<AudioDevice> {
   return invokeAudioMutation(
-    device.direction === "input"
+    device.direction === AudioDirection.Input
       ? SET_DEFAULT_AUDIO_INPUT_COMMAND
       : SET_DEFAULT_AUDIO_OUTPUT_COMMAND,
     { deviceId: device.id },

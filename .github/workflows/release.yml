@@ -20,6 +20,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Rust MSRV
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: clippy
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -43,6 +48,11 @@ jobs:
           yarn lint
           yarn build
           cargo test --locked --manifest-path src-tauri/Cargo.toml
+          cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Test Swift sidecar
+        working-directory: native/macos-agent
+        run: swift test
 
       - name: Build Swift sidecar
         run: yarn native:build

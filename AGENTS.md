@@ -87,6 +87,12 @@ belong in `_components/`; dashboard-shared UI belongs in the dashboard
 group's `_components/`; application-wide primitives belong in `components/`.
 Promote components only after reuse proves a broader owner.
 
+Ownership determines placement and promotion. Start with a child colocated in
+its owning component, promote it to route-private `_components/` when multiple
+route components consume it, then to the route-group or top-level `components/`
+only when reuse crosses those boundaries. Extract units for a clear
+responsibility or interface, never only to reduce line count.
+
 ## Component rules
 
 - Every ordinary React component has a kebab-case folder and `index.tsx`.
@@ -101,6 +107,9 @@ Promote components only after reuse proves a broader owner.
 - Do not organize with Atomic Design or create `atoms`, `molecules`,
   `features`, `screens`, or a generic `app-shell`.
 - Do not extract one-off wrappers or abstractions without a proven responsibility.
+- Keep component-owned constants in `constants.ts` and pure transformations in
+  `helper.ts`. Keep React state, effects, event wiring, and value composition in
+  the owning component, context, or focused hook.
 
 ## Styling and design
 
@@ -155,6 +164,27 @@ functions for services, helpers, hooks, factories, and behavior.
 Services represent real boundaries only. Do not wrap fixture arrays in services
 or invent remote contracts. Components consume domain services and never
 low-level transports directly.
+
+## Native module ownership
+
+Rust Tauri commands are thin boundary functions. Keep request validation,
+domain orchestration, protocol parsing, persistence, and process transport in
+focused owner-scoped modules when more than one responsibility is present.
+Private modules stay with their owning command or event domain; promote only
+concepts genuinely shared by multiple domains.
+
+Swift's executable entry point only reads, decodes, dispatches, and writes
+protocol envelopes. Dispatch closed request methods exhaustively and delegate
+resource behavior to focused handlers. Separate platform discovery, mutation,
+normalization, event watching, and serialized models when these responsibilities
+otherwise accumulate in one file.
+
+For both Rust and Swift, keep closed protocol values in enums, repeated mappings
+in typed tables, and stable identifiers, messages, schema versions, retry
+configuration, and request prefixes in named constants at the narrowest shared
+scope. Runtime device data, operating-system text, paths, and open platform
+values remain runtime values. Preserve serialized wire values when introducing
+types.
 
 ## Context folder contract
 

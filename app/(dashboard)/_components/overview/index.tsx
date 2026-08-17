@@ -21,6 +21,7 @@ import { CameraAction } from "@/lib/enums/camera-action";
 import { CameraDiscoveryState } from "@/lib/enums/camera-discovery-state";
 import { CameraMutationStatus } from "@/lib/enums/camera-mutation-status";
 import { CameraTransport } from "@/lib/enums/camera-transport";
+import { InputMonitoringStatus } from "@/lib/enums/input-monitoring-status";
 import { PeripheralDiscoveryState } from "@/lib/enums/peripheral-discovery-state";
 
 const AUDIO_TRANSPORT_KEYS = {
@@ -150,7 +151,7 @@ export function Overview(): React.ReactNode {
             value={cameras.cameras.some((candidate) => candidate.id === cameras.preferredCameraId) ? cameras.preferredCameraId ?? "" : ""}
           />
           <MetricCard
-            description={peripherals.inputMonitoring === "authorized" ? overviewMessages.metrics.allResponding : messages.peripherals.inputMonitoringGuidance}
+            description={peripherals.inputMonitoring === InputMonitoringStatus.Authorized ? overviewMessages.metrics.allResponding : messages.peripherals.inputMonitoringGuidance}
             icon={Keyboard}
             title={overviewMessages.metrics.peripherals}
             value={`${peripherals.peripherals.length} ${overviewMessages.metrics.connected}`}

@@ -2,22 +2,6 @@ import ApplicationServices
 import Foundation
 import IOKit.hid
 
-struct HidDiscoveryResult: Encodable {
-    let inputMonitoring: String
-    let peripherals: [DiscoveredPeripheral]
-}
-
-struct DiscoveredPeripheral: Encodable {
-    let id: String
-    let name: String
-    let manufacturer: String
-    let category: String
-    let transport: String
-    let vendorId: Int?
-    let productId: Int?
-    let batteryPercent: Int?
-}
-
 struct HidDeviceMetadata {
     let name: String
     let manufacturer: String
@@ -61,32 +45,50 @@ struct HidDeviceMetadata {
     }
 }
 
-struct LightingDiagnosticResult: Encodable {
-    let schemaVersion: Int
-    let candidates: [LightingCandidate]
+struct HidDeviceIdentifier: Hashable {
+    let vendorID: Int
+    let productID: Int
 }
 
-struct LightingCandidate: Encodable {
-    let id: String
-    let name: String
-    let manufacturer: String
-    let vendorId: Int
-    let productId: Int
-    let transport: String
-    let interfaces: [LightingInterface]
-    let protocolStatus: String
-    let power: String
-    let brightness: String
-    let staticColor: String
-    let effectSelection: String
-}
-
-struct LightingInterface: Encodable {
-    let usagePage: Int
+private struct HidUsage: Hashable {
+    let page: Int
     let usage: Int
-    let maxOutputReportSize: Int
-    let maxFeatureReportSize: Int
+
+    static let gameController = HidUsage(page: 1, usage: 5)
+    static let joystick = HidUsage(page: 1, usage: 4)
+    static let keyboard = HidUsage(page: 1, usage: 6)
+    static let mouse = HidUsage(page: 1, usage: 2)
+    static let trackpad = HidUsage(page: 13, usage: 5)
 }
+
+private enum PeripheralCategory: String {
+    case gameController = "game-controller"
+    case keyboard
+    case mouse
+    case trackpad
+}
+
+private enum PeripheralTransport: String {
+    case bluetooth
+    case builtIn = "built-in"
+    case unknown
+    case usb
+    case wireless
+}
+
+private let knownLightingDeviceIdentifiers: Set<HidDeviceIdentifier> = [
+    HidDeviceIdentifier(vendorID: 12_610, productID: 40_976),
+    HidDeviceIdentifier(vendorID: 1_452, productID: 591),
+    HidDeviceIdentifier(vendorID: 1_133, productID: 49_288),
+]
+
+private let peripheralCategoriesByUsage: [HidUsage: PeripheralCategory] = [
+    .gameController: .gameController,
+    .joystick: .gameController,
+    .keyboard: .keyboard,
+    .mouse: .mouse,
+    .trackpad: .trackpad,
+]
 
 func discoverHidDevices() -> HidDiscoveryResult {
     let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -96,7 +98,7 @@ func discoverHidDevices() -> HidDiscoveryResult {
     let peripherals = normalizeHidMetadata(devices.map(hidMetadata))
     IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
     return HidDiscoveryResult(
-        inputMonitoring: CGPreflightListenEventAccess() ? "authorized" : "not-granted",
+        inputMonitoring: CGPreflightListenEventAccess() ? .authorized : .notGranted,
         peripherals: peripherals
     )
 }
@@ -121,9 +123,9 @@ func makeLightingDiagnostic(_ records: [HidDeviceMetadata]) -> LightingDiagnosti
             let hasWritableHidReport = group.contains {
                 $0.maxOutputReportSize > 0 || $0.maxFeatureReportSize > 0
             }
-            let status = hasWritableHidReport ? "unknown" : "unsupported"
+            let status: LightingCapabilityStatus = hasWritableHidReport ? .unknown : .unsupported
             return LightingCandidate(
-                id: "lighting-\(fnv1a(identity))",
+                id: "lighting-\(fnv1aHash(identity))",
                 name: first.name,
                 manufacturer: first.manufacturer,
                 vendorId: vendorID,
@@ -149,8 +151,14 @@ func makeLightingDiagnostic(_ records: [HidDeviceMetadata]) -> LightingDiagnosti
 }
 
 private func isLightingCandidate(_ record: HidDeviceMetadata) -> Bool {
-    (record.vendorID == 12_610 && record.productID == 40_976)
-        || (record.vendorID == 1_452 && record.productID == 591)
+    isKnownLightingDevice(vendorID: record.vendorID, productID: record.productID)
+}
+
+func isKnownLightingDevice(vendorID: Int?, productID: Int?) -> Bool {
+    guard let vendorID, let productID else { return false }
+    return knownLightingDeviceIdentifiers.contains(
+        HidDeviceIdentifier(vendorID: vendorID, productID: productID)
+    )
 }
 
 private func lightingIdentity(_ record: HidDeviceMetadata) -> String {
@@ -161,10 +169,10 @@ func watchHidDeviceEvents() -> Never {
     let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
     IOHIDManagerSetDeviceMatching(manager, nil)
     IOHIDManagerRegisterDeviceMatchingCallback(manager, { _, _, _, device in
-        writeHidChangeEvent(device: device, change: "connected")
+        writeHidChangeEvent(device: device, change: .connected)
     }, nil)
     IOHIDManagerRegisterDeviceRemovalCallback(manager, { _, _, _, device in
-        writeHidChangeEvent(device: device, change: "disconnected")
+        writeHidChangeEvent(device: device, change: .disconnected)
     }, nil)
     IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetCurrent(), CFRunLoopMode.defaultMode.rawValue)
     IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -194,7 +202,7 @@ private func hidMetadata(_ device: IOHIDDevice) -> HidDeviceMetadata {
 }
 
 func normalizeHidMetadata(_ records: [HidDeviceMetadata]) -> [DiscoveredPeripheral] {
-    let candidates = records.compactMap { record -> (String, String, HidDeviceMetadata)? in
+    let candidates = records.compactMap { record -> (String, PeripheralCategory, HidDeviceMetadata)? in
         guard let category = hidCategory(page: record.usagePage, usage: record.usage) else {
             return nil
         }
@@ -225,10 +233,10 @@ func normalizeHidMetadata(_ records: [HidDeviceMetadata]) -> [DiscoveredPeripher
             : rawName
         let battery = group.compactMap(\.2.batteryPercent).first(where: { (0...100).contains($0) })
         return DiscoveredPeripheral(
-            id: "hid-\(fnv1a(identity))",
+            id: "hid-\(fnv1aHash(identity))",
             name: name,
             manufacturer: visibleManufacturer,
-            category: selected.1,
+            category: selected.1.rawValue,
             transport: hidTransport(record.transport),
             vendorId: record.vendorID,
             productId: record.productID,
@@ -238,14 +246,14 @@ func normalizeHidMetadata(_ records: [HidDeviceMetadata]) -> [DiscoveredPeripher
 }
 
 private func selectPrimaryHidFunction(
-    _ group: [(String, String, HidDeviceMetadata)]
-) -> (String, String, HidDeviceMetadata)? {
+    _ group: [(String, PeripheralCategory, HidDeviceMetadata)]
+) -> (String, PeripheralCategory, HidDeviceMetadata)? {
     let name = group.first?.2.name.lowercased() ?? ""
     for (term, category) in [
-        ("mouse", "mouse"),
-        ("keyboard", "keyboard"),
-        ("trackpad", "trackpad"),
-        ("controller", "game-controller"),
+        ("mouse", PeripheralCategory.mouse),
+        ("keyboard", PeripheralCategory.keyboard),
+        ("trackpad", PeripheralCategory.trackpad),
+        ("controller", PeripheralCategory.gameController),
     ] where name.contains(term) {
         if let matching = group.first(where: { $0.1 == category }) {
             return matching
@@ -262,59 +270,58 @@ private func intProperty(_ device: IOHIDDevice, _ key: String) -> Int? {
     (IOHIDDeviceGetProperty(device, key as CFString) as? NSNumber)?.intValue
 }
 
-private func hidCategory(page: Int, usage: Int) -> String? {
-    if page == 13 && usage == 5 { return "trackpad" }
-    if page == 1 && usage == 2 { return "mouse" }
-    if page == 1 && usage == 6 { return "keyboard" }
-    if page == 1 && (usage == 4 || usage == 5) { return "game-controller" }
-    return nil
+private func hidCategory(page: Int, usage: Int) -> PeripheralCategory? {
+    peripheralCategoriesByUsage[HidUsage(page: page, usage: usage)]
 }
 
-private func categoryPriority(_ category: String) -> Int {
+private func categoryPriority(_ category: PeripheralCategory) -> Int {
     switch category {
-    case "trackpad": 0
-    case "mouse": 1
-    case "keyboard": 2
-    case "game-controller": 3
-    default: 4
+    case .trackpad: 0
+    case .mouse: 1
+    case .keyboard: 2
+    case .gameController: 3
     }
 }
 
-private func fallbackPeripheralName(manufacturer: String, category: String) -> String {
+private func fallbackPeripheralName(
+    manufacturer: String,
+    category: PeripheralCategory
+) -> String {
     let categoryName: String
     switch category {
-    case "game-controller": categoryName = "Game Controller"
-    case "keyboard": categoryName = "Keyboard"
-    case "mouse": categoryName = "Mouse"
-    case "trackpad": categoryName = "Trackpad"
-    default: categoryName = "Peripheral"
+    case .gameController: categoryName = "Game Controller"
+    case .keyboard: categoryName = "Keyboard"
+    case .mouse: categoryName = "Mouse"
+    case .trackpad: categoryName = "Trackpad"
     }
     return manufacturer.isEmpty ? categoryName : "\(manufacturer) \(categoryName)"
 }
 
 private func hidTransport(_ value: String) -> String {
     let normalized = value.lowercased()
-    if normalized.contains("usb") { return "usb" }
-    if normalized.contains("bluetooth") { return "bluetooth" }
-    if normalized.contains("spi") || normalized.contains("fifo") || normalized.contains("built") { return "built-in" }
-    if normalized.contains("wireless") { return "wireless" }
-    return "unknown"
+    let transport: PeripheralTransport
+    if normalized.contains("usb") {
+        transport = .usb
+    } else if normalized.contains("bluetooth") {
+        transport = .bluetooth
+    } else if normalized.contains("spi")
+        || normalized.contains("fifo")
+        || normalized.contains("built") {
+        transport = .builtIn
+    } else if normalized.contains("wireless") {
+        transport = .wireless
+    } else {
+        transport = .unknown
+    }
+    return transport.rawValue
 }
 
-private func fnv1a(_ value: String) -> String {
-    var hash: UInt64 = 14_695_981_039_346_656_037
-    for byte in value.utf8 { hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211 }
-    return String(hash, radix: 16)
-}
-
-private func writeHidChangeEvent(device: IOHIDDevice, change: String) {
+private func writeHidChangeEvent(device: IOHIDDevice, change: DeviceEventChange) {
     guard let peripheral = normalizeHidMetadata([hidMetadata(device)]).first else { return }
     let category = peripheral.category
-    let eventCategory = ["keyboard", "mouse", "trackpad"].contains(category)
-        ? category
-        : "peripheral"
+    let eventCategory = DeviceEventCategory(rawValue: category) ?? .peripheral
     let eventID = peripheral.id
-    let envelope = DeviceEventEnvelope(kind: "device-change", version: PROTOCOL_VERSION, event: DeviceEvent(
+    let envelope = DeviceEventEnvelope(kind: .deviceChange, version: PROTOCOL_VERSION, event: DeviceEvent(
         id: eventID, category: eventCategory, change: change,
         occurredAt: ISO8601DateFormatter().string(from: Date())
     ))

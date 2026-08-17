@@ -1,5 +1,6 @@
 import type { PeripheralCategory } from "@/lib/enums/peripheral-category";
 import type { PeripheralTransport } from "@/lib/enums/peripheral-transport";
+import type { InputMonitoringStatus } from "@/lib/enums/input-monitoring-status";
 
 export interface Peripheral {
   readonly batteryPercent?: number;
@@ -13,6 +14,6 @@ export interface Peripheral {
 }
 
 export interface PeripheralDiscovery {
-  readonly inputMonitoring: string;
+  readonly inputMonitoring: InputMonitoringStatus;
   readonly peripherals: readonly Peripheral[];
 }

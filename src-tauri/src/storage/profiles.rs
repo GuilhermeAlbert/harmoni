@@ -3,7 +3,10 @@ use std::{fs, path::Path};
 use serde::Deserialize;
 
 use crate::{
-    commands::profiles::{Profile, ProfilePreferences, ProfileStore, PROFILE_SCHEMA_VERSION},
+    commands::profiles::{
+        Profile, ProfileOrigin, ProfilePreferences, ProfilePreset, ProfileStore,
+        PROFILE_SCHEMA_VERSION,
+    },
     sidecar::NativeAgentError,
 };
 
@@ -58,18 +61,26 @@ pub(crate) fn load_or_migrate_store(path: &Path) -> Result<ProfileStore, NativeA
     if legacy.version != 1 {
         return Err(NativeAgentError::protocol());
     }
-    let store = ProfileStore {
-        version: PROFILE_SCHEMA_VERSION,
-        active_profile_id: legacy.active_profile_id,
-        profiles: legacy
-            .profiles
-            .into_iter()
-            .map(|item| Profile {
+    let profiles = legacy
+        .profiles
+        .into_iter()
+        .map(|item| {
+            Ok(Profile {
                 id: item.id,
                 name: item.name,
                 description: item.description,
-                origin: item.origin,
-                preset: item.preset,
+                origin: match item.origin.as_str() {
+                    "local" => ProfileOrigin::Local,
+                    "seeded" => ProfileOrigin::Seeded,
+                    _ => return Err(NativeAgentError::protocol()),
+                },
+                preset: match item.preset.as_deref() {
+                    None => None,
+                    Some("private") => Some(ProfilePreset::Private),
+                    Some("recording") => Some(ProfilePreset::Recording),
+                    Some("work") => Some(ProfilePreset::Work),
+                    Some(_) => return Err(NativeAgentError::protocol()),
+                },
                 active: item.active,
                 preferences: ProfilePreferences {
                     audio_input_id: Some(item.preferences.audio_input_id),
@@ -81,7 +92,12 @@ pub(crate) fn load_or_migrate_store(path: &Path) -> Result<ProfileStore, NativeA
                     stop_camera_preview: !item.preferences.camera_enabled,
                 },
             })
-            .collect(),
+        })
+        .collect::<Result<Vec<_>, NativeAgentError>>()?;
+    let store = ProfileStore {
+        version: PROFILE_SCHEMA_VERSION,
+        active_profile_id: legacy.active_profile_id,
+        profiles,
     };
     if !store.is_valid() {
         return Err(NativeAgentError::protocol());
@@ -136,12 +152,22 @@ pub(crate) fn seed_store(
         microphones_muted: input.filter(|(_, _, _, can_mute)| *can_mute).map(|_| muted),
         stop_camera_preview: private,
     };
-    let profile = |id: &str, volume: u8, muted: bool, private: bool| Profile {
-        id: id.to_owned(),
-        name: id.to_owned(),
+    let profile = |preset: ProfilePreset, volume: u8, muted: bool, private: bool| Profile {
+        id: match preset {
+            ProfilePreset::Private => "private",
+            ProfilePreset::Recording => "recording",
+            ProfilePreset::Work => "work",
+        }
+        .to_owned(),
+        name: match preset {
+            ProfilePreset::Private => "private",
+            ProfilePreset::Recording => "recording",
+            ProfilePreset::Work => "work",
+        }
+        .to_owned(),
         description: None,
-        origin: "seeded".to_owned(),
-        preset: Some(id.to_owned()),
+        origin: ProfileOrigin::Seeded,
+        preset: Some(preset),
         active: false,
         preferences: preferences(volume, muted, private),
     };
@@ -149,9 +175,9 @@ pub(crate) fn seed_store(
         version: PROFILE_SCHEMA_VERSION,
         active_profile_id: None,
         profiles: vec![
-            profile("work", 65, false, false),
-            profile("recording", 80, false, false),
-            profile("private", 0, true, true),
+            profile(ProfilePreset::Work, 65, false, false),
+            profile(ProfilePreset::Recording, 80, false, false),
+            profile(ProfilePreset::Private, 0, true, true),
         ],
     };
     save_store(path, &store)?;
