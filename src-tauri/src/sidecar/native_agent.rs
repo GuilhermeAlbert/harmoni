@@ -17,15 +17,12 @@ use super::AgentMethod;
 const AGENT_SIDECAR: &str = "harmoni-agent";
 const AGENT_TIMEOUT: Duration = Duration::from_secs(3);
 const PROTOCOL_VERSION: u16 = 1;
-const ERROR_INVALID_ARGUMENT: &str = "The native operation arguments are invalid.";
-const ERROR_NOT_FOUND: &str = "The requested native device was not found.";
-const ERROR_PROCESS: &str = "The native operation was rejected.";
-const ERROR_PROTOCOL: &str = "The native agent returned an invalid response.";
-const ERROR_SPAWN: &str = "The bundled native agent could not be started.";
-const ERROR_TERMINATED: &str = "The native agent terminated before responding.";
-const ERROR_TIMEOUT: &str = "The native agent did not respond in time.";
-const ERROR_UNSUPPORTED: &str = "The requested native control is unsupported.";
-const ERROR_WRITE: &str = "The request could not be sent to the native agent.";
+
+mod error;
+
+pub(crate) use error::NativeAgentError;
+#[cfg(test)]
+use error::NativeAgentErrorCode;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,29 +33,6 @@ pub(crate) struct AgentHealth {
     #[serde(rename = "macOSVersion")]
     mac_os_version: String,
     architecture: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct NativeAgentError {
-    code: NativeAgentErrorCode,
-    message: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "snake_case")]
-enum NativeAgentErrorCode {
-    InvalidArgument,
-    NotFound,
-    Unsupported,
-    Timeout,
-    Protocol,
-    Process,
-    Spawn,
-    Terminated,
-    Write,
-    PermissionDenied,
-    CameraInUse,
 }
 
 #[derive(Serialize)]
@@ -258,101 +232,6 @@ fn expected_agent_architecture() -> &'static str {
         "aarch64" => "arm64",
         architecture => architecture,
     }
-}
-
-impl NativeAgentError {
-    fn timeout() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Timeout,
-            message: ERROR_TIMEOUT.to_owned(),
-        }
-    }
-
-    pub(crate) fn protocol() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Protocol,
-            message: ERROR_PROTOCOL.to_owned(),
-        }
-    }
-
-    pub(crate) fn process() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Process,
-            message: ERROR_PROCESS.to_owned(),
-        }
-    }
-
-    pub(crate) fn invalid_argument() -> Self {
-        Self {
-            code: NativeAgentErrorCode::InvalidArgument,
-            message: ERROR_INVALID_ARGUMENT.to_owned(),
-        }
-    }
-
-    pub(crate) fn not_found() -> Self {
-        Self {
-            code: NativeAgentErrorCode::NotFound,
-            message: ERROR_NOT_FOUND.to_owned(),
-        }
-    }
-
-    pub(crate) fn unsupported() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Unsupported,
-            message: ERROR_UNSUPPORTED.to_owned(),
-        }
-    }
-
-    fn spawn() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Spawn,
-            message: ERROR_SPAWN.to_owned(),
-        }
-    }
-
-    fn write() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Write,
-            message: ERROR_WRITE.to_owned(),
-        }
-    }
-
-    fn terminated() -> Self {
-        Self {
-            code: NativeAgentErrorCode::Terminated,
-            message: ERROR_TERMINATED.to_owned(),
-        }
-    }
-
-    fn from_agent(error: AgentProtocolError) -> Self {
-        let Some(message) = safe_agent_message(&error.message) else {
-            return match error.code.as_str() {
-                "invalid_argument" => Self::invalid_argument(),
-                "not_found" => Self::not_found(),
-                "unsupported" => Self::unsupported(),
-                "process" => Self::process(),
-                _ => Self::protocol(),
-            };
-        };
-        let code = match error.code.as_str() {
-            "invalid_argument" => NativeAgentErrorCode::InvalidArgument,
-            "not_found" => NativeAgentErrorCode::NotFound,
-            "unsupported" => NativeAgentErrorCode::Unsupported,
-            "process" => NativeAgentErrorCode::Process,
-            "permission_denied" => NativeAgentErrorCode::PermissionDenied,
-            "camera_in_use" => NativeAgentErrorCode::CameraInUse,
-            _ => return Self::protocol(),
-        };
-        Self { code, message }
-    }
-}
-
-fn safe_agent_message(message: &str) -> Option<String> {
-    let trimmed = message.trim();
-    if trimmed.is_empty() || trimmed.len() > 256 || trimmed.chars().any(char::is_control) {
-        return None;
-    }
-    Some(trimmed.to_owned())
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> Define Harmoni's planned runtime boundaries and incremental source layout.
+> Define Harmoni's current runtime boundaries and source layout.
 
 ## Product boundary
 
@@ -27,7 +27,7 @@ Static Next.js UI
 Responses travel back through the same boundaries as versioned, typed data.
 Each boundary rejects malformed or unsupported values rather than guessing.
 
-## Planned routes
+## Implemented routes
 
 ```text
 app/(dashboard)/
@@ -46,24 +46,21 @@ source of truth for the active destination.
 
 ## Data sources
 
-Product screens begin with typed immutable fixtures. Fixtures support explicit
-loading, empty, error, and success demonstrations. A fixture must never be
-presented as native data.
+Product screens read typed device, permission, profile, and event data through
+frontend services backed by allowlisted Tauri commands. Native failures remain
+visible and never trigger a fixture fallback. Local profiles use versioned JSON
+storage in the Tauri application data directory, including migration and
+recovery-copy behavior.
 
-Native integration replaces the relevant fixture as the source of truth in a
-later specification. The UI must not silently fall back to fixtures when native
-discovery fails. Local profiles are planned to use versioned storage in the
-Tauri application data directory.
-
-## Delivery stages
+## Implemented delivery stages
 
 1. Repository and knowledge foundation.
 2. Static frontend shell and design system.
-3. Product routes backed by typed fixtures.
-4. Tauri, Rust, and Swift communication foundation.
-5. Read-only permission and device discovery.
-6. Capability-gated device mutations and local profiles.
-7. Reproducible GitHub Release artifacts.
+3. Product routes and typed locale dictionaries.
+4. Versioned Tauri, Rust, and Swift communication.
+5. Permission and device discovery through public macOS APIs.
+6. Capability-gated device mutations, events, and local profiles.
+7. GitHub Actions validation and tagged macOS release packaging.
 
 Every stage must remain buildable and manually verifiable.
 
@@ -74,12 +71,11 @@ Mac App Store, remote services, telemetry, and commercial account features.
 
 ## Recommendations and open questions
 
-**Recommendation:** Keep native protocol envelopes versioned from their first
-implementation even while they contain only a health command.
+**Current implementation:** Native protocol envelopes use protocol version 1,
+correlated request identifiers, typed methods, and structured errors.
 
 **Open question:** The minimum macOS deployment target must be chosen before
 native packaging becomes stable.
 
 **Open question:** Distribution architecture support beyond Apple Silicon needs
 runner and sidecar verification.
-

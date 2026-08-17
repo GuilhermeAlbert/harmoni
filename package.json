@@ -9,13 +9,15 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
+    "test": "vitest",
+    "test:run": "vitest run",
     "native:build": "sh native/macos-agent/build-sidecar.sh",
     "package:mac": "tauri build --bundles app,dmg",
     "version:check": "node -e \"const fs=require('fs');const p=require('./package.json').version;const cargo=fs.readFileSync('src-tauri/Cargo.toml','utf8').match(/^version = \\\"([^\\\"]+)\\\"/m)?.[1];const tauri=require('./src-tauri/tauri.conf.json').version;const swift=fs.readFileSync('native/macos-agent/Sources/HarmoniAgent/agent-info.swift','utf8').match(/AGENT_VERSION = \\\"([^\\\"]+)\\\"/)?.[1];const release=process.env.RELEASE_VERSION;if([cargo,tauri,swift].some(v=>v!==p)||(release&&release!==p)){console.error('Version mismatch',{package:p,cargo,tauri,swift,release});process.exit(1)}console.log('Version '+p+' is consistent')\"",
     "tauri": "tauri"
   },
   "engines": {
-    "node": "24.14.1",
+    "node": ">=24.14.1 <25",
     "yarn": "1.22.22"
   },
   "dependencies": {
@@ -31,12 +33,16 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.17",
     "@tauri-apps/cli": "2",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.2",
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.1",
     "eslint-config-next": "16.2.0",
+    "jsdom": "29.0.0",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "4.1.0"
   }
 }

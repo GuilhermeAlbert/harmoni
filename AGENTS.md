@@ -7,7 +7,7 @@ When this file and supplementary guidance conflict, follow this file.
 ## Product and scope
 
 Harmoni is a private macOS desktop application for centralized device and
-peripheral management. Its planned capabilities include audio input and output
+peripheral management. Its current capabilities include audio input and output
 selection, volume and mute control, camera discovery and supported controls,
 peripheral discovery, local configuration profiles, macOS permission status,
 device connection events, and distribution through GitHub Releases.
@@ -16,7 +16,7 @@ The initial roadmap explicitly excludes DriverKit, System Extensions, virtual
 audio or camera devices, the Mac App Store, cloud synchronization, account
 login, a remote backend, telemetry, subscriptions, and payments.
 
-## Planned stack
+## Current stack
 
 - Next.js 16.2 with the App Router and static export
 - React 19 and TypeScript in strict mode
@@ -26,10 +26,8 @@ login, a remote backend, telemetry, subscriptions, and payments.
 - Swift for macOS-specific public APIs
 - Yarn 1.22.22, ESLint 9, GitHub Actions, and GitHub Releases
 
-The current implementation stage may contain only a subset of this stack.
-Never present planned technology as already implemented. Before changing
-framework behavior, read the relevant installed Next.js documentation and
-follow its current deprecations.
+Before changing framework behavior, read the relevant installed Next.js
+documentation and follow its current deprecations.
 
 ## Runtime architecture
 

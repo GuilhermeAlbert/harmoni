@@ -41,6 +41,9 @@ jobs:
       - name: Verify application versions
         run: yarn version:check
 
+      - name: Test frontend
+        run: yarn test:run
+
       - name: Lint frontend
         run: yarn lint
 

@@ -20,13 +20,15 @@ repeating the full instruction set:
 
 ## Current verified state
 
-The repository currently contains foundation metadata and toolchain policy.
-Next.js, Tauri, Rust application code, the Swift package, product routes, and
-workflows are planned but not yet implemented.
+The repository contains the static Next.js dashboard, typed locale dictionaries,
+Tauri commands and capabilities, a Rust orchestration layer, a Swift macOS
+sidecar, local profile persistence, device-event subscriptions, native tests,
+and GitHub Actions validation and release workflows. Audio, camera, peripheral,
+permission, profile, theme, and language flows are implemented within the
+documented local-only product boundary.
 
 ## Documentation policy
 
 Facts are grounded in the repository, supplied specifications, or canonical
 instructions. Future-facing guidance is labelled as a recommendation or open
 question and must not be treated as an implemented capability.
-

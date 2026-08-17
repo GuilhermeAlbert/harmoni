@@ -32,7 +32,9 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
   const [preferredCameraId, setPreferredCameraId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [state, setState] = useState(CameraDiscoveryState.Loading);
+  const activeMutation = useRef<number | null>(null);
   const camerasRef = useRef<readonly Camera[]>([]);
+  const mutationSequence = useRef(0);
   const refreshSequence = useRef(0);
 
   useEffect(() => {
@@ -96,14 +98,25 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
     optimistic: readonly Camera[],
     operation: () => Promise<void>,
   ): Promise<void> => {
+    if (activeMutation.current !== null) {
+      return;
+    }
+
+    const mutationToken = ++mutationSequence.current;
+    activeMutation.current = mutationToken;
     const previous = cameras;
     setCameras(optimistic);
     setMutation(null);
     setPending(target);
     try {
       await operation();
-      setMutation({ ...target, status: CameraMutationStatus.Success });
+      if (activeMutation.current === mutationToken) {
+        setMutation({ ...target, status: CameraMutationStatus.Success });
+      }
     } catch (cause: unknown) {
+      if (activeMutation.current !== mutationToken) {
+        return;
+      }
       setCameras(previous);
       setMutation({
         ...target,
@@ -113,7 +126,10 @@ export function CamerasProvider({ children }: PropsWithChildren): React.ReactNod
       setRefreshing(true);
       setAttempt((current) => current + 1);
     } finally {
-      setPending(null);
+      if (activeMutation.current === mutationToken) {
+        activeMutation.current = null;
+        setPending(null);
+      }
     }
   };
 
