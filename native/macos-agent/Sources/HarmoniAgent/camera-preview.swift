@@ -22,14 +22,14 @@ final class CameraPreviewManager: @unchecked Sendable {
         stop()
         guard authorizeCameraCapture() else {
             return .failure(CameraMutationFailure(
-                code: "permission_denied",
-                message: "Camera access is required to start the preview."
+                code: .permissionDenied,
+                message: CameraErrorMessage.previewPermissionRequired
             ))
         }
         guard let device = cameraDevice(stableID: cameraID) else {
             return .failure(CameraMutationFailure(
-                code: "not_found",
-                message: "The selected camera is no longer connected."
+                code: .notFound,
+                message: CameraErrorMessage.cameraDisconnected
             ))
         }
         do {
@@ -74,8 +74,8 @@ final class CameraPreviewManager: @unchecked Sendable {
         } catch {
             stop()
             return .failure(CameraMutationFailure(
-                code: "camera_in_use",
-                message: "The camera could not start. It may be in use by another application."
+                code: .cameraInUse,
+                message: CameraErrorMessage.cameraInUse
             ))
         }
     }
@@ -155,7 +155,7 @@ private final class CameraAuthorizationResult: @unchecked Sendable {
 
 private func previewUnavailable() -> CameraMutationFailure {
     CameraMutationFailure(
-        code: "camera_in_use",
-        message: "The selected camera cannot provide a preview right now."
+        code: .cameraInUse,
+        message: CameraErrorMessage.previewUnavailable
     )
 }

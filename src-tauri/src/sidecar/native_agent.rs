@@ -12,10 +12,20 @@ use tauri_plugin_shell::{
 };
 use tokio::time::timeout;
 
-const AGENT_INFO_METHOD: &str = "agent.info";
+use super::AgentMethod;
+
 const AGENT_SIDECAR: &str = "harmoni-agent";
 const AGENT_TIMEOUT: Duration = Duration::from_secs(3);
 const PROTOCOL_VERSION: u16 = 1;
+const ERROR_INVALID_ARGUMENT: &str = "The native operation arguments are invalid.";
+const ERROR_NOT_FOUND: &str = "The requested native device was not found.";
+const ERROR_PROCESS: &str = "The native operation was rejected.";
+const ERROR_PROTOCOL: &str = "The native agent returned an invalid response.";
+const ERROR_SPAWN: &str = "The bundled native agent could not be started.";
+const ERROR_TERMINATED: &str = "The native agent terminated before responding.";
+const ERROR_TIMEOUT: &str = "The native agent did not respond in time.";
+const ERROR_UNSUPPORTED: &str = "The requested native control is unsupported.";
+const ERROR_WRITE: &str = "The request could not be sent to the native agent.";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -92,7 +102,7 @@ pub(crate) struct AgentOutput {
 pub(crate) async fn fetch_agent_health<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<AgentHealth, NativeAgentError> {
-    let output = request_agent_output(app, AGENT_INFO_METHOD, "health", json!({})).await?;
+    let output = request_agent_output(app, AgentMethod::AgentInfo, "health", json!({})).await?;
     parse_response(
         &output.line,
         &output.request_id,
@@ -102,7 +112,7 @@ pub(crate) async fn fetch_agent_health<R: Runtime>(
 
 pub(crate) async fn request_agent_output<R: Runtime>(
     app: &AppHandle<R>,
-    method: &str,
+    method: AgentMethod,
     request_prefix: &str,
     params: Value,
 ) -> Result<AgentOutput, NativeAgentError> {
@@ -131,7 +141,7 @@ pub(crate) async fn request_agent_output<R: Runtime>(
 
 pub(crate) fn spawn_agent_request<R: Runtime>(
     app: &AppHandle<R>,
-    method: &str,
+    method: AgentMethod,
     request_prefix: &str,
     params: Value,
 ) -> Result<(String, Receiver<CommandEvent>, CommandChild), NativeAgentError> {
@@ -154,7 +164,10 @@ pub(crate) fn spawn_agent_request<R: Runtime>(
 
     if child.write(request.as_bytes()).is_err() || child.write(b"\n").is_err() {
         let _ = child.kill();
-        eprintln!("native-agent request write failed: sidecar={AGENT_SIDECAR} method={method}");
+        eprintln!(
+            "native-agent request write failed: sidecar={AGENT_SIDECAR} method={}",
+            method.as_str()
+        );
         return Err(NativeAgentError::write());
     }
 
@@ -172,13 +185,13 @@ fn make_request_id(prefix: &str) -> Result<String, NativeAgentError> {
 
 fn encode_request(
     request_id: &str,
-    method: &str,
+    method: AgentMethod,
     params: Value,
 ) -> Result<String, NativeAgentError> {
     serde_json::to_string(&AgentRequest {
         id: request_id,
         version: PROTOCOL_VERSION,
-        method,
+        method: method.as_str(),
         params,
     })
     .map_err(|_| NativeAgentError::protocol())
@@ -251,63 +264,63 @@ impl NativeAgentError {
     fn timeout() -> Self {
         Self {
             code: NativeAgentErrorCode::Timeout,
-            message: "The native agent did not respond in time.".to_owned(),
+            message: ERROR_TIMEOUT.to_owned(),
         }
     }
 
     pub(crate) fn protocol() -> Self {
         Self {
             code: NativeAgentErrorCode::Protocol,
-            message: "The native agent returned an invalid response.".to_owned(),
+            message: ERROR_PROTOCOL.to_owned(),
         }
     }
 
     pub(crate) fn process() -> Self {
         Self {
             code: NativeAgentErrorCode::Process,
-            message: "The native operation was rejected.".to_owned(),
+            message: ERROR_PROCESS.to_owned(),
         }
     }
 
     pub(crate) fn invalid_argument() -> Self {
         Self {
             code: NativeAgentErrorCode::InvalidArgument,
-            message: "The native operation arguments are invalid.".to_owned(),
+            message: ERROR_INVALID_ARGUMENT.to_owned(),
         }
     }
 
     pub(crate) fn not_found() -> Self {
         Self {
             code: NativeAgentErrorCode::NotFound,
-            message: "The requested native device was not found.".to_owned(),
+            message: ERROR_NOT_FOUND.to_owned(),
         }
     }
 
     pub(crate) fn unsupported() -> Self {
         Self {
             code: NativeAgentErrorCode::Unsupported,
-            message: "The requested native control is unsupported.".to_owned(),
+            message: ERROR_UNSUPPORTED.to_owned(),
         }
     }
 
     fn spawn() -> Self {
         Self {
             code: NativeAgentErrorCode::Spawn,
-            message: "The bundled native agent could not be started.".to_owned(),
+            message: ERROR_SPAWN.to_owned(),
         }
     }
 
     fn write() -> Self {
         Self {
             code: NativeAgentErrorCode::Write,
-            message: "The request could not be sent to the native agent.".to_owned(),
+            message: ERROR_WRITE.to_owned(),
         }
     }
 
     fn terminated() -> Self {
         Self {
             code: NativeAgentErrorCode::Terminated,
-            message: "The native agent terminated before responding.".to_owned(),
+            message: ERROR_TERMINATED.to_owned(),
         }
     }
 

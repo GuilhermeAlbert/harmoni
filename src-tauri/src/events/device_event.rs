@@ -2,9 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Runtime};
 
-use crate::sidecar::{request_agent_output, NativeAgentError};
-
-const DEVELOPMENT_EVENT_METHOD: &str = "development.emitDeviceEvent";
+use crate::sidecar::{request_agent_output, AgentMethod, NativeAgentError};
 const DEVICE_EVENT_KIND: &str = "device-change";
 pub(crate) const DEVICE_EVENT_NAME: &str = "harmoni://device-change";
 const PROTOCOL_VERSION: u16 = 1;
@@ -53,8 +51,13 @@ struct DeviceEventEnvelope {
 pub(crate) async fn emit_development_device_event<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<DeviceEvent, NativeAgentError> {
-    let output =
-        request_agent_output(app, DEVELOPMENT_EVENT_METHOD, "device-event", json!({})).await?;
+    let output = request_agent_output(
+        app,
+        AgentMethod::DevelopmentEmitDeviceEvent,
+        "device-event",
+        json!({}),
+    )
+    .await?;
     let event = parse_device_event(&output.line)?;
 
     app.emit(DEVICE_EVENT_NAME, &event)

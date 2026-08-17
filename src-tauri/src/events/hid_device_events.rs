@@ -1,6 +1,6 @@
 use super::device_event::{parse_device_event, DEVICE_EVENT_NAME};
 use super::watcher::{retry_delay, WatcherProcess, MAX_RESTART_ATTEMPTS};
-use crate::sidecar::spawn_agent_request;
+use crate::sidecar::{spawn_agent_request, AgentMethod};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_shell::process::CommandEvent;
@@ -16,10 +16,16 @@ pub(crate) fn start_hid_device_events<R: Runtime>(app: AppHandle<R>) {
             return;
         };
         for attempt in 0..=MAX_RESTART_ATTEMPTS {
-            let Ok((_, mut events, child)) =
-                spawn_agent_request(&app, "hid.watchDeviceEvents", "hid-events", json!({}))
-            else {
-                eprintln!("native-agent watcher spawn failed: method=hid.watchDeviceEvents attempt={attempt}");
+            let Ok((_, mut events, child)) = spawn_agent_request(
+                &app,
+                AgentMethod::HidWatchDeviceEvents,
+                "hid-events",
+                json!({}),
+            ) else {
+                eprintln!(
+                    "native-agent watcher spawn failed: method={} attempt={attempt}",
+                    AgentMethod::HidWatchDeviceEvents.as_str()
+                );
                 if attempt < MAX_RESTART_ATTEMPTS && !state.0.is_stopping() {
                     sleep(retry_delay(attempt)).await;
                     continue;

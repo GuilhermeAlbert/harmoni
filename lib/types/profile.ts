@@ -1,4 +1,6 @@
 import type { ProfileOrigin } from "@/lib/enums/profile-origin";
+import type { ProfileOperation } from "@/lib/enums/profile-operation";
+import type { ProfileOperationStatus } from "@/lib/enums/profile-operation-status";
 import type { ProfilePreset } from "@/lib/enums/profile-preset";
 
 export interface ProfileDevicePreferences {
@@ -22,8 +24,8 @@ export interface Profile {
 }
 
 export interface ProfileOperationResult {
-  readonly operation: string;
-  readonly status: "failed" | "missing-device" | "skipped-not-requested" | "skipped-unsupported" | "success";
+  readonly operation: ProfileOperation;
+  readonly status: ProfileOperationStatus;
   readonly error?: { readonly code: string; readonly message: string };
 }
 

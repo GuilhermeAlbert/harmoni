@@ -2,6 +2,63 @@ import Foundation
 
 let PROTOCOL_VERSION = 1
 
+enum AgentMethod: String, CaseIterable {
+    case agentInfo = "agent.info"
+    case audioDevices = "audio.devices"
+    case audioSetDefaultInput = "audio.setDefaultInput"
+    case audioSetDefaultOutput = "audio.setDefaultOutput"
+    case audioSetMute = "audio.setMute"
+    case audioSetVolume = "audio.setVolume"
+    case audioWatchDeviceEvents = "audio.watchDeviceEvents"
+    case cameraDevices = "camera.devices"
+    case cameraSetExposure = "camera.setExposure"
+    case cameraSetZoom = "camera.setZoom"
+    case cameraStartPreview = "camera.startPreview"
+    case cameraWatchDeviceEvents = "camera.watchDeviceEvents"
+    case developmentEmitDeviceEvent = "development.emitDeviceEvent"
+    case hidDevices = "hid.devices"
+    case hidLightingDiagnostics = "hid.lightingDiagnostics"
+    case hidWatchDeviceEvents = "hid.watchDeviceEvents"
+    case permissionsOpenSettings = "permissions.openSettings"
+    case permissionsStatus = "permissions.status"
+}
+
+enum AgentErrorCode: String, Encodable {
+    case cameraInUse = "camera_in_use"
+    case invalidArgument = "invalid_argument"
+    case invalidRequest = "invalid_request"
+    case methodNotFound = "method_not_found"
+    case notFound = "not_found"
+    case permissionDenied = "permission_denied"
+    case process
+    case protocolMismatch = "protocol_mismatch"
+    case unsupported
+}
+
+enum DeviceEventKind: String, Encodable {
+    case deviceChange = "device-change"
+}
+
+enum DeviceEventCategory: String, Encodable {
+    case audio
+    case audioInput = "audio-input"
+    case audioOutput = "audio-output"
+    case camera
+    case keyboard
+    case mouse
+    case peripheral
+    case trackpad
+}
+
+enum DeviceEventChange: String, Encodable {
+    case connected
+    case defaultChanged = "default-changed"
+    case disconnected
+    case inventoryChanged = "inventory-changed"
+    case muteChanged = "mute-changed"
+    case volumeChanged = "volume-changed"
+}
+
 struct RequestEnvelope: Decodable {
     let id: String
     let version: Int
@@ -28,7 +85,7 @@ struct AgentInfoResult: Encodable {
 }
 
 struct ErrorPayload: Encodable {
-    let code: String
+    let code: AgentErrorCode
     let message: String
 }
 
@@ -71,24 +128,28 @@ enum ResultPayload: Encodable {
 }
 
 struct DeviceEventEnvelope: Encodable {
-    let kind: String
+    let kind: DeviceEventKind
     let version: Int
     let event: DeviceEvent
 }
 
 struct DeviceEvent: Encodable {
     let id: String
-    let category: String
-    let change: String
+    let category: DeviceEventCategory
+    let change: DeviceEventChange
     let occurredAt: String
 }
 
 func stableDeviceEventID(prefix: String, value: String) -> String {
+    "\(prefix).\(fnv1aHash(value))"
+}
+
+func fnv1aHash(_ value: String) -> String {
     var hash: UInt64 = 14_695_981_039_346_656_037
     for byte in value.utf8 {
         hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211
     }
-    return "\(prefix).\(String(hash, radix: 16))"
+    return String(hash, radix: 16)
 }
 
 enum AgentOutput: Encodable {
@@ -138,7 +199,7 @@ enum ResponseEnvelope: Encodable {
 
 func makeErrorResponse(
     id: String?,
-    code: String,
+    code: AgentErrorCode,
     message: String
 ) -> ResponseEnvelope {
     .error(id: id, value: ErrorPayload(code: code, message: message))
@@ -146,12 +207,12 @@ func makeErrorResponse(
 
 func makeDevelopmentDeviceEvent() -> DeviceEventEnvelope {
     DeviceEventEnvelope(
-        kind: "device-change",
+        kind: .deviceChange,
         version: PROTOCOL_VERSION,
         event: DeviceEvent(
-            id: "development.audio-input",
-            category: "audio-input",
-            change: "connected",
+            id: AgentProtocolIdentifier.developmentAudioInput,
+            category: .audioInput,
+            change: .connected,
             occurredAt: "2026-01-01T00:00:00Z"
         )
     )

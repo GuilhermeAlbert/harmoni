@@ -4,13 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Runtime};
 
-use crate::sidecar::{parse_agent_result, request_agent_output, AgentOutput, NativeAgentError};
-
-const AUDIO_DEVICES_METHOD: &str = "audio.devices";
-const SET_DEFAULT_INPUT_METHOD: &str = "audio.setDefaultInput";
-const SET_DEFAULT_OUTPUT_METHOD: &str = "audio.setDefaultOutput";
-const SET_MUTE_METHOD: &str = "audio.setMute";
-const SET_VOLUME_METHOD: &str = "audio.setVolume";
+use crate::sidecar::{
+    parse_agent_result, request_agent_output, AgentMethod, AgentOutput, NativeAgentError,
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -77,7 +73,7 @@ pub(crate) async fn get_audio_devices<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Vec<AudioDevice>, NativeAgentError> {
     let output =
-        request_agent_output(&app, AUDIO_DEVICES_METHOD, "audio-devices", json!({})).await?;
+        request_agent_output(&app, AgentMethod::AudioDevices, "audio-devices", json!({})).await?;
     parse_audio_devices(&output)
 }
 
@@ -86,7 +82,13 @@ pub(crate) async fn set_default_audio_input<R: Runtime>(
     app: AppHandle<R>,
     device_id: String,
 ) -> Result<AudioDevice, NativeAgentError> {
-    mutate_audio_device(&app, SET_DEFAULT_INPUT_METHOD, device_id, json!({})).await
+    mutate_audio_device(
+        &app,
+        AgentMethod::AudioSetDefaultInput,
+        device_id,
+        json!({}),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -94,7 +96,13 @@ pub(crate) async fn set_default_audio_output<R: Runtime>(
     app: AppHandle<R>,
     device_id: String,
 ) -> Result<AudioDevice, NativeAgentError> {
-    mutate_audio_device(&app, SET_DEFAULT_OUTPUT_METHOD, device_id, json!({})).await
+    mutate_audio_device(
+        &app,
+        AgentMethod::AudioSetDefaultOutput,
+        device_id,
+        json!({}),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -106,7 +114,7 @@ pub(crate) async fn set_audio_volume<R: Runtime>(
     validate_volume(volume)?;
     mutate_audio_device(
         &app,
-        SET_VOLUME_METHOD,
+        AgentMethod::AudioSetVolume,
         device_id,
         json!({ "volume": volume }),
     )
@@ -119,12 +127,18 @@ pub(crate) async fn set_audio_mute<R: Runtime>(
     device_id: String,
     muted: bool,
 ) -> Result<AudioDevice, NativeAgentError> {
-    mutate_audio_device(&app, SET_MUTE_METHOD, device_id, json!({ "muted": muted })).await
+    mutate_audio_device(
+        &app,
+        AgentMethod::AudioSetMute,
+        device_id,
+        json!({ "muted": muted }),
+    )
+    .await
 }
 
 async fn mutate_audio_device<R: Runtime>(
     app: &AppHandle<R>,
-    method: &str,
+    method: AgentMethod,
     device_id: String,
     mut params: serde_json::Value,
 ) -> Result<AudioDevice, NativeAgentError> {

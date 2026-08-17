@@ -5,7 +5,7 @@ description = "A macOS desktop application for centralized device and peripheral
 authors = ["Harmoni contributors"]
 license = "UNLICENSED"
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.88.0"
 
 [lib]
 name = "harmoni_lib"

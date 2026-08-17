@@ -4,10 +4,11 @@ import type { PropsWithChildren } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { AudioDevicesContext } from "./context";
+import { AUDIO_EVENT_CATEGORIES, AUDIO_REFRESH_DEBOUNCE_MILLISECONDS } from "./constants";
+import { getAudioFailureState } from "./helper";
 import { AudioDiscoveryState } from "@/lib/enums/audio-discovery-state";
 import { AudioControl } from "@/lib/enums/audio-control";
 import { AudioMutationStatus } from "@/lib/enums/audio-mutation-status";
-import { DeviceEventCategory } from "@/lib/enums/device-event-category";
 import {
   getAudioDevices,
   setAudioMute,
@@ -32,6 +33,7 @@ export function AudioDevicesProvider({
   const [mutation, setMutation] = useState<AudioMutationState | null>(null);
   const [pending, setPending] = useState<AudioPendingMutation | null>(null);
   const devicesRef = useRef<readonly AudioDevice[]>([]);
+  const mutationInFlight = useRef(false);
   const refreshSequence = useRef(0);
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export function AudioDevicesProvider({
         }
 
         setRefreshing(false);
-        setState(devicesRef.current.length ? AudioDiscoveryState.Degraded : AudioDiscoveryState.Error);
+        setState(getAudioFailureState(devicesRef.current.length));
       });
 
     return () => {
@@ -69,12 +71,12 @@ export function AudioDevicesProvider({
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
     subscribeToDeviceEvents((event) => {
-      if (active && [DeviceEventCategory.Audio, DeviceEventCategory.AudioInput, DeviceEventCategory.AudioOutput].includes(event.category)) {
+      if (active && AUDIO_EVENT_CATEGORIES.includes(event.category)) {
         setRefreshing(true);
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => {
           if (active) setAttempt((currentAttempt) => currentAttempt + 1);
-        }, 150);
+        }, AUDIO_REFRESH_DEBOUNCE_MILLISECONDS);
       }
     })
       .then((nextUnsubscribe) => {
@@ -86,7 +88,7 @@ export function AudioDevicesProvider({
       })
       .catch(() => {
         if (active) {
-          setState(devicesRef.current.length ? AudioDiscoveryState.Degraded : AudioDiscoveryState.Error);
+          setState(getAudioFailureState(devicesRef.current.length));
         }
       });
 
@@ -108,6 +110,11 @@ export function AudioDevicesProvider({
     target: AudioPendingMutation,
     operation: () => Promise<AudioDevice>,
   ): Promise<void> => {
+    if (mutationInFlight.current) {
+      return;
+    }
+
+    mutationInFlight.current = true;
     const previousDevices = devices;
     setDevices(optimisticDevices);
     setMutation(null);
@@ -130,6 +137,7 @@ export function AudioDevicesProvider({
       setRefreshing(true);
       setAttempt((currentAttempt) => currentAttempt + 1);
     } finally {
+      mutationInFlight.current = false;
       setPending(null);
     }
   };

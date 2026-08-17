@@ -16,6 +16,21 @@ use crate::{
 pub(crate) const PROFILE_SCHEMA_VERSION: u16 = 2;
 const PROFILES_FILE: &str = "profiles.json";
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ProfileOrigin {
+    Local,
+    Seeded,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ProfilePreset {
+    Private,
+    Recording,
+    Work,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProfilePreferences {
@@ -36,8 +51,8 @@ pub(crate) struct Profile {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) description: Option<String>,
-    pub(crate) origin: String,
-    pub(crate) preset: Option<String>,
+    pub(crate) origin: ProfileOrigin,
+    pub(crate) preset: Option<ProfilePreset>,
     pub(crate) active: bool,
     pub(crate) preferences: ProfilePreferences,
 }
@@ -54,8 +69,18 @@ pub(crate) struct ProfileStore {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProfileOperationResult {
     operation: &'static str,
-    status: &'static str,
+    status: ProfileOperationStatus,
     error: Option<NativeAgentError>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum ProfileOperationStatus {
+    Failed,
+    MissingDevice,
+    SkippedNotRequested,
+    SkippedUnsupported,
+    Success,
 }
 
 #[derive(Serialize)]
@@ -100,7 +125,6 @@ impl Profile {
                 .description
                 .as_ref()
                 .is_none_or(|value| value.len() <= 120)
-            && matches!(self.origin.as_str(), "seeded" | "local")
             && self
                 .preferences
                 .input_volume
@@ -164,7 +188,7 @@ pub(crate) fn save_profile<R: Runtime>(
     app: AppHandle<R>,
     mut profile: Profile,
 ) -> Result<Vec<Profile>, NativeAgentError> {
-    profile.origin = "local".to_owned();
+    profile.origin = ProfileOrigin::Local;
     profile.preset = None;
     profile.active = false;
     if !profile.is_valid() {
@@ -245,13 +269,18 @@ pub(crate) async fn apply_profile<R: Runtime>(
         &profile.preferences.audio_input_id,
         input,
     ) {
-        (false, _, _) => operations.push(skipped("audio-input", "skipped-not-requested")),
-        (true, None, _) | (true, Some(_), None) => {
-            operations.push(skipped("audio-input", "missing-device"))
-        }
-        (true, Some(_), Some(device)) if !device.can_set_default() => {
-            operations.push(skipped("audio-input", "skipped-unsupported"))
-        }
+        (false, _, _) => operations.push(skipped(
+            "audio-input",
+            ProfileOperationStatus::SkippedNotRequested,
+        )),
+        (true, None, _) | (true, Some(_), None) => operations.push(skipped(
+            "audio-input",
+            ProfileOperationStatus::MissingDevice,
+        )),
+        (true, Some(_), Some(device)) if !device.can_set_default() => operations.push(skipped(
+            "audio-input",
+            ProfileOperationStatus::SkippedUnsupported,
+        )),
         (true, Some(id), Some(_)) => record(
             &mut operations,
             "audio-input",
@@ -261,11 +290,18 @@ pub(crate) async fn apply_profile<R: Runtime>(
         ),
     }
     match (&profile.preferences.audio_output_id, output) {
-        (None, _) => operations.push(skipped("audio-output", "skipped-not-requested")),
-        (Some(_), None) => operations.push(skipped("audio-output", "missing-device")),
-        (Some(_), Some(device)) if !device.can_set_default() => {
-            operations.push(skipped("audio-output", "skipped-unsupported"))
-        }
+        (None, _) => operations.push(skipped(
+            "audio-output",
+            ProfileOperationStatus::SkippedNotRequested,
+        )),
+        (Some(_), None) => operations.push(skipped(
+            "audio-output",
+            ProfileOperationStatus::MissingDevice,
+        )),
+        (Some(_), Some(device)) if !device.can_set_default() => operations.push(skipped(
+            "audio-output",
+            ProfileOperationStatus::SkippedUnsupported,
+        )),
         (Some(id), Some(_)) => record(
             &mut operations,
             "audio-output",
@@ -275,11 +311,18 @@ pub(crate) async fn apply_profile<R: Runtime>(
         ),
     }
     match (profile.preferences.input_volume, input) {
-        (None, _) => operations.push(skipped("input-volume", "skipped-not-requested")),
-        (Some(_), None) => operations.push(skipped("input-volume", "missing-device")),
-        (Some(_), Some(device)) if !device.can_set_volume() => {
-            operations.push(skipped("input-volume", "skipped-unsupported"))
-        }
+        (None, _) => operations.push(skipped(
+            "input-volume",
+            ProfileOperationStatus::SkippedNotRequested,
+        )),
+        (Some(_), None) => operations.push(skipped(
+            "input-volume",
+            ProfileOperationStatus::MissingDevice,
+        )),
+        (Some(_), Some(device)) if !device.can_set_volume() => operations.push(skipped(
+            "input-volume",
+            ProfileOperationStatus::SkippedUnsupported,
+        )),
         (Some(value), Some(_)) => record(
             &mut operations,
             "input-volume",
@@ -293,11 +336,18 @@ pub(crate) async fn apply_profile<R: Runtime>(
         ),
     }
     match (profile.preferences.microphones_muted, input) {
-        (None, _) => operations.push(skipped("microphone-mute", "skipped-not-requested")),
-        (Some(_), None) => operations.push(skipped("microphone-mute", "missing-device")),
-        (Some(_), Some(device)) if !device.can_set_mute() => {
-            operations.push(skipped("microphone-mute", "skipped-unsupported"))
-        }
+        (None, _) => operations.push(skipped(
+            "microphone-mute",
+            ProfileOperationStatus::SkippedNotRequested,
+        )),
+        (Some(_), None) => operations.push(skipped(
+            "microphone-mute",
+            ProfileOperationStatus::MissingDevice,
+        )),
+        (Some(_), Some(device)) if !device.can_set_mute() => operations.push(skipped(
+            "microphone-mute",
+            ProfileOperationStatus::SkippedUnsupported,
+        )),
         (Some(value), Some(_)) => record(
             &mut operations,
             "microphone-mute",
@@ -311,8 +361,14 @@ pub(crate) async fn apply_profile<R: Runtime>(
         ),
     }
     match (&profile.preferences.camera_id, selected_camera) {
-        (None, _) => operations.push(skipped("camera-preference", "skipped-not-requested")),
-        (Some(_), None) => operations.push(skipped("camera-preference", "missing-device")),
+        (None, _) => operations.push(skipped(
+            "camera-preference",
+            ProfileOperationStatus::SkippedNotRequested,
+        )),
+        (Some(_), None) => operations.push(skipped(
+            "camera-preference",
+            ProfileOperationStatus::MissingDevice,
+        )),
         (Some(id), Some(_)) => record(
             &mut operations,
             "camera-preference",
@@ -323,12 +379,13 @@ pub(crate) async fn apply_profile<R: Runtime>(
         camera::stop_camera_preview_process(preview.inner());
         operations.push(success("camera-preview"));
     } else {
-        operations.push(skipped("camera-preview", "skipped-not-requested"));
+        operations.push(skipped(
+            "camera-preview",
+            ProfileOperationStatus::SkippedNotRequested,
+        ));
     }
 
-    let fully_applied = operations
-        .iter()
-        .all(|item| !matches!(item.status, "failed" | "missing-device"));
+    let fully_applied = are_operations_fully_applied(&operations);
     if fully_applied {
         store.active_profile_id = Some(profile_id.clone());
         for item in &mut store.profiles {
@@ -357,11 +414,11 @@ fn record(
 fn success(operation: &'static str) -> ProfileOperationResult {
     ProfileOperationResult {
         operation,
-        status: "success",
+        status: ProfileOperationStatus::Success,
         error: None,
     }
 }
-fn skipped(operation: &'static str, status: &'static str) -> ProfileOperationResult {
+fn skipped(operation: &'static str, status: ProfileOperationStatus) -> ProfileOperationResult {
     ProfileOperationResult {
         operation,
         status,
@@ -371,9 +428,18 @@ fn skipped(operation: &'static str, status: &'static str) -> ProfileOperationRes
 fn failure(operation: &'static str, error: NativeAgentError) -> ProfileOperationResult {
     ProfileOperationResult {
         operation,
-        status: "failed",
+        status: ProfileOperationStatus::Failed,
         error: Some(error),
     }
+}
+
+fn are_operations_fully_applied(operations: &[ProfileOperationResult]) -> bool {
+    operations.iter().all(|item| {
+        matches!(
+            item.status,
+            ProfileOperationStatus::Success | ProfileOperationStatus::SkippedNotRequested
+        )
+    })
 }
 fn profiles_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, NativeAgentError> {
     app.path()
@@ -384,7 +450,10 @@ fn profiles_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, NativeAgentE
 
 #[cfg(test)]
 mod tests {
-    use super::{Profile, ProfilePreferences, ProfileStore, PROFILE_SCHEMA_VERSION};
+    use super::{
+        are_operations_fully_applied, skipped, Profile, ProfileOperationStatus, ProfileOrigin,
+        ProfilePreferences, ProfilePreset, ProfileStore, PROFILE_SCHEMA_VERSION,
+    };
     use crate::storage::profiles::{load_or_migrate_store, save_store, seed_store};
     use std::{
         fs,
@@ -404,6 +473,16 @@ mod tests {
     }
 
     #[test]
+    fn requested_unsupported_operation_is_not_fully_applied() {
+        let operations = vec![skipped(
+            "audio-input",
+            ProfileOperationStatus::SkippedUnsupported,
+        )];
+
+        assert!(!are_operations_fully_applied(&operations));
+    }
+
+    #[test]
     fn seeds_capability_aware_profiles_once() {
         let path = test_path("seed-v2");
         let seeded = seed_store(
@@ -419,7 +498,7 @@ mod tests {
         let private = loaded
             .profiles
             .iter()
-            .find(|item| item.id == "private")
+            .find(|item| item.preset == Some(ProfilePreset::Private))
             .unwrap();
         assert!(private.preferences.stop_camera_preview);
         assert_eq!(private.preferences.microphones_muted, Some(true));
@@ -467,7 +546,7 @@ mod tests {
             id: "x".into(),
             name: "X".into(),
             description: None,
-            origin: "local".into(),
+            origin: ProfileOrigin::Local,
             preset: None,
             active: false,
             preferences: ProfilePreferences {
@@ -486,7 +565,7 @@ mod tests {
             id: "focus".into(),
             name: "Focus".into(),
             description: Some("A saved local setup".into()),
-            origin: "local".into(),
+            origin: ProfileOrigin::Local,
             preset: None,
             active: false,
             preferences: ProfilePreferences {
